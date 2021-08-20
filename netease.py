@@ -1,14 +1,13 @@
 import asyncio
 
-import requests
 from graia.application import MessageChain
 from graia.application.message.elements.internal import Plain
 
-from app.entities.NetEaseUser import NetEaseUser
+from app.api.doHttp import doHttpRequest
 from app.extend.NetEaseCloudMusicAction import NetEase_process_event
 from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
-from app.util.tools import isstartswith
+from app.util.tools import isstartswith, message_source
 
 
 class NetEase(Plugin):
@@ -30,51 +29,70 @@ class NetEase(Plugin):
         try:
             if isstartswith(self.msg[0], 'qd'):
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
-                await NetEase_process_event(self.app, self.friend.id, self.msg[1], self.msg[2])
+                if not message_source:
+                    await NetEase_process_event(self.app, self.friend.id, self.msg[1], self.msg[2])
             elif isstartswith(self.msg[0], 'add'):
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
-                NetEaseUser(self.friend.id, self.msg[1], self.msg[2])
-                self.resp = MessageChain.create([
-                    Plain('添加成功')
-                ])
+                if not message_source:
+                    with MysqlDao() as db:
+                        res = db.query(
+                            'SELECT * FROM netease WHERE phone=%s',
+                            [self.msg[1]]
+                        )
+                        if not res:
+                            res = db.update(
+                                'INSERT INTO netease (qid, phone, pwd) VALUES (%s, %s, %s)',
+                                [self.friend.id, self.msg[1], self.msg[2]]
+                            )
+                            if not res:
+                                raise Exception()
+                            self.resp = MessageChain.create([
+                                Plain('添加成功')
+                            ])
+                        else:
+                            self.resp = MessageChain.create([
+                                Plain('该账号已存在！')
+                            ])
             elif isstartswith(self.msg[0], 'remove'):
                 assert len(self.msg) == 2 and self.msg[1].isdigit()
-                with MysqlDao() as db:
-                    res = db.query(
-                        'SELECT * FROM netease WHERE qid=%s and phone=%s',
-                        [self.friend.id, self.msg[1]]
-                    )
-                    print(str(res) + '\n 1')
-                    if res:
-                        res = db.update(
-                            'DELETE FROM netease WHERE qid=%s and phone=%s',
+                if not message_source:
+                    with MysqlDao() as db:
+                        res = db.query(
+                            'SELECT * FROM netease WHERE qid=%s and phone=%s',
                             [self.friend.id, self.msg[1]]
                         )
-                        print(str(res) + '\n 2')
+                        print(str(res) + '\n 1')
                         if res:
+                            res = db.update(
+                                'DELETE FROM netease WHERE qid=%s and phone=%s',
+                                [self.friend.id, self.msg[1]]
+                            )
+                            print(str(res) + '\n 2')
+                            if res:
+                                self.resp = MessageChain.create([
+                                    Plain('移除成功！')
+                                ])
+                        else:
                             self.resp = MessageChain.create([
-                                Plain('移除成功！')
+                                Plain('该账号不存在！')
                             ])
-                    else:
-                        self.resp = MessageChain.create([
-                            Plain('该账号不存在！')
-                        ])
             elif isstartswith(self.msg[0], 'list'):
-                with MysqlDao() as db:
-                    res = db.query(
-                        'SELECT phone FROM netease WHERE qid=%s',
-                        [self.friend.id]
-                    )
-                    self.resp = MessageChain.create([
-                        Plain('\n'.join([f'{phone[0]}' for phone in res]))
-                    ])
+                if not message_source:
+                    with MysqlDao() as db:
+                        res = db.query(
+                            'SELECT phone FROM netease WHERE qid=%s',
+                            [self.friend.id]
+                        )
+                        self.resp = MessageChain.create([
+                            Plain('\n'.join([f'{phone[0]}' for phone in res]))
+                        ])
             elif isstartswith(self.msg[0], 'rp'):
-                req = requests.get('https://api.66mz8.com/api/music.163.php?format=json')
-                ans = req.json()
+                req = json.loads(await doHttpRequest('https://api.muxiaoguo.cn/api/163reping', 'GET'))
+                ans = req['data']
                 self.resp = MessageChain.create([
-                    Plain('歌曲：%s\r\n' % ans['name']),
+                    Plain('歌曲：%s\r\n' % ans['songName']),
                     Plain('昵称：%s\r\n' % ans['nickname']),
-                    Plain('评论：%s' % ans['comments'])
+                    Plain('评论：%s' % ans['content'])
                 ])
             else:
                 self.args_error()

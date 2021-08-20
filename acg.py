@@ -1,7 +1,9 @@
+import random
+
 from graia.application import MessageChain
 from graia.application.message.elements.internal import Image
 
-from app.api.tianyi import getHttp
+from app.api.doHttp import doHttpRequest
 from app.plugin.base import Plugin
 from app.util.tools import isstartswith
 
@@ -26,7 +28,9 @@ class ACG(Plugin):
             return
         try:
             if isstartswith(self.msg[0], '0'):
-                Image.fromNetworkAddress("https://api.lyiqk.cn/api")
+                self.resp = MessageChain.create([
+                    Image.fromNetworkAddress("https://api.lyiqk.cn/api")
+                ])
             elif isstartswith(self.msg[0], '1'):
                 self.resp = MessageChain.create([
                     Image.fromNetworkAddress("https://api.ghser.com/random/api.php")
@@ -52,14 +56,12 @@ class ACG(Plugin):
                     Image.fromNetworkAddress("https://api.lyiqk.cn/mjx")
                 ])
             elif isstartswith(self.msg[0], 'tui'):
-                url = 'http://api.kind8.cn/api/tu.php'
+                urls = [
+                    'http://api.kind8.cn/api/tu.php',
+                    'http://apii.muuzi.cn/sjmt.php'
+                ]
                 self.resp = MessageChain.create([
-                    Image.fromNetworkAddress((await getHttp(url)).strip('\n'))
-                ])
-            elif isstartswith(self.msg[0], 'tui1'):
-                url = 'http://api.ymong.top/api/meitui.php'
-                self.resp = MessageChain.create([
-                    Image.fromNetworkAddress((await getHttp(url)).strip('\n'))
+                    Image.fromNetworkAddress(await doHttpRequest(random.choice(urls), 'GET'))
                 ])
             else:
                 self.args_error()
