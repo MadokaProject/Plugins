@@ -19,8 +19,7 @@ class ACG(Plugin):
         '.acg 4\r\n' \
         '.acg miku\r\n' \
         '.acg mjx\r\n' \
-        '.acg tui\r\n' \
-        '.acg tui1'
+        '.acg tui'
 
     async def process(self):
         if not self.msg:
@@ -61,7 +60,7 @@ class ACG(Plugin):
                     'http://apii.muuzi.cn/sjmt.php'
                 ]
                 self.resp = MessageChain.create([
-                    Image.fromNetworkAddress(await doHttpRequest(random.choice(urls), 'GET'))
+                    Image.fromNetworkAddress((await doHttpRequest(random.choice(urls), 'GET')).strip('\n'))
                 ])
             else:
                 self.args_error()
