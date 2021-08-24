@@ -9,7 +9,6 @@ from graia.application import MessageChain
 from graia.application.message.elements.internal import Plain
 
 from app.api.doHttp import doHttpRequest
-from app.extend.NetEaseCloudMusicAction import NetEase_process_event
 from app.plugin.base import Plugin, Schedule
 from app.util.dao import MysqlDao
 from app.util.tools import isstartswith, message_source
