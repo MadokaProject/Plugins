@@ -49,7 +49,7 @@ class SspanelQd(Plugin):
                     self.resp = MessageChain.create([
                         Plain('添加/修改成功！' if db.update(
                             'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
-                            [self.friend.id, self.msg[0], self.msg[1], self.msg[2], self.msg[3]]
+                            [self.friend.id, self.msg[1], self.msg[2], self.msg[3]]
                         ) else '添加/修改失败！')
                     ])
             elif isstartswith(self.msg[0], 'remove'):
