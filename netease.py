@@ -35,7 +35,7 @@ class NetEase(Plugin):
             if isstartswith(self.msg[0], 'qd'):
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
                 if not message_source(self):
-                    await NetEase_process_event(self.app, self.friend.id, self.msg[1], self.msg[2])
+                    await Tasker(self.app).NetEase_process_event(self.friend.id, self.msg[1], self.msg[2])
             elif isstartswith(self.msg[0], 'add'):
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
                 if not message_source(self):
