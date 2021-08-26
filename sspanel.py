@@ -68,7 +68,7 @@ class SspanelQd(Plugin):
                         [self.friend.id]
                     )
                     self.resp = MessageChain.create([
-                        Plain('\n'.join(f'{index}: {web}\t{user}' for index, web, user in enumerate(res)))
+                        Plain('\n'.join(f'{index}: {web}\t{user}' for index, (web, user) in enumerate(res)))
                     ])
             else:
                 self.args_error()
@@ -83,7 +83,7 @@ class SspanelQd(Plugin):
 
 
 class Tasker(Schedule):
-    cron = '0 8 * * *'
+    cron = '0 8 * * * 0'
 
     async def process(self):
         with MysqlDao() as _db:
@@ -91,7 +91,7 @@ class Tasker(Schedule):
                 'SELECT qid, web, user, pwd FROM Plugin_Sspanel_Account'
             )
             if accounts:
-                for index, qid, web, user, pwd in enumerate(accounts):
+                for index, (qid, web, user, pwd) in enumerate(accounts):
                     account = {}
                     account.update({
                         index: {
@@ -101,7 +101,7 @@ class Tasker(Schedule):
                         }
                     })
                     msg = await self.checkin(account)
-                    await self.message_send(msg, qid)
+                    await self.message_send(msg, int(qid))
 
     async def checkin(self, account):
         msgall = ''

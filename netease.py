@@ -110,7 +110,7 @@ class NetEase(Plugin):
 
 
 class Tasker(Schedule):
-    cron = '0 8 * * *'
+    cron = '0 8 * * * 0'
 
     async def process(self):
         with MysqlDao() as db:
@@ -118,10 +118,10 @@ class Tasker(Schedule):
                 'SELECT qid, phone, pwd FROM netease'
             )
             for (qid, phone, pwd) in accounts:
-                await self.app.sendFriendMessage(qid, MessageChain.create([
-                    Plain("测试计划任务：正在进行账号" + phone + "的自动签到任务\r\n下次运行时间为：8:00")
+                await self.app.sendFriendMessage(int(qid), MessageChain.create([
+                    Plain("正在进行账号" + phone + "的自动签到任务\r\n下次运行时间为：8:00")
                 ]))
-                await self.NetEase_process_event(qid, phone, pwd)
+                await self.NetEase_process_event(int(qid), phone, pwd)
 
     def encrypt(self, key, text):
         cryptor = AES.new(key.encode('utf8'), AES.MODE_CBC, b'0102030405060708')
