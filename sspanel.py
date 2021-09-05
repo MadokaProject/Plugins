@@ -4,7 +4,7 @@ from graia.application.message.elements.internal import Plain
 
 from app.plugin.base import Plugin, Schedule, initDB
 from app.util.dao import MysqlDao
-from app.util.tools import isstartswith, message_source
+from app.util.tools import isstartswith
 
 requests.packages.urllib3.disable_warnings()
 
