@@ -25,10 +25,11 @@ class SspanelQd(Plugin):
             self.print_help()
             return
         try:
-            if message_source(self):
+            if not hasattr(self, 'friend'):
                 self.resp = MessageChain.create([
-                    Plain('请勿在群聊内使用该指令！')
+                    Plain('请私聊使用该命令!')
                 ])
+                return
             if isstartswith(self.msg[0], 'qd'):
                 assert len(self.msg) == 4
                 account = {

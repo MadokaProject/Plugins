@@ -56,8 +56,7 @@ class ACG(Plugin):
                 ])
             elif isstartswith(self.msg[0], 'tui'):
                 urls = [
-                    'http://api.kind8.cn/api/tu.php',
-                    'http://apii.muuzi.cn/sjmt.php'
+                    'http://api.kind8.cn/api/tu.php'
                 ]
                 self.resp = MessageChain.create([
                     Image.fromNetworkAddress((await doHttpRequest(random.choice(urls), 'GET')).strip('\n'))

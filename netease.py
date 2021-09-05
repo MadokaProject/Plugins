@@ -11,7 +11,7 @@ from graia.application.message.elements.internal import Plain
 from app.api.doHttp import doHttpRequest
 from app.plugin.base import Plugin, Schedule
 from app.util.dao import MysqlDao
-from app.util.tools import isstartswith, message_source
+from app.util.tools import isstartswith
 
 
 class NetEase(Plugin):
@@ -32,64 +32,80 @@ class NetEase(Plugin):
             return
         try:
             if isstartswith(self.msg[0], 'qd'):
+                if not hasattr(self, 'friend'):
+                    self.resp = MessageChain.create([
+                        Plain('请私聊使用该命令!')
+                    ])
+                    return
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
-                if not message_source(self):
-                    await Tasker(self.app).NetEase_process_event(self.friend.id, self.msg[1], self.msg[2])
+                await Tasker(self.app).NetEase_process_event(self.friend.id, self.msg[1], self.msg[2])
             elif isstartswith(self.msg[0], 'add'):
+                if not hasattr(self, 'friend'):
+                    self.resp = MessageChain.create([
+                        Plain('请私聊使用该命令!')
+                    ])
+                    return
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
-                if not message_source(self):
-                    with MysqlDao() as db:
-                        res = db.query(
-                            'SELECT * FROM netease WHERE phone=%s',
-                            [self.msg[1]]
+                with MysqlDao() as db:
+                    res = db.query(
+                        'SELECT * FROM netease WHERE phone=%s',
+                        [self.msg[1]]
+                    )
+                    if not res:
+                        res = db.update(
+                            'INSERT INTO netease (qid, phone, pwd) VALUES (%s, %s, %s)',
+                            [self.friend.id, self.msg[1], self.msg[2]]
                         )
                         if not res:
-                            res = db.update(
-                                'INSERT INTO netease (qid, phone, pwd) VALUES (%s, %s, %s)',
-                                [self.friend.id, self.msg[1], self.msg[2]]
-                            )
-                            if not res:
-                                raise Exception()
-                            self.resp = MessageChain.create([
-                                Plain('添加成功')
-                            ])
-                        else:
-                            self.resp = MessageChain.create([
-                                Plain('该账号已存在！')
-                            ])
+                            raise Exception()
+                        self.resp = MessageChain.create([
+                            Plain('添加成功')
+                        ])
+                    else:
+                        self.resp = MessageChain.create([
+                            Plain('该账号已存在！')
+                        ])
             elif isstartswith(self.msg[0], 'remove'):
+                if not hasattr(self, 'friend'):
+                    self.resp = MessageChain.create([
+                        Plain('请私聊使用该命令!')
+                    ])
+                    return
                 assert len(self.msg) == 2 and self.msg[1].isdigit()
-                if not message_source(self):
-                    with MysqlDao() as db:
-                        res = db.query(
-                            'SELECT * FROM netease WHERE qid=%s and phone=%s',
+                with MysqlDao() as db:
+                    res = db.query(
+                        'SELECT * FROM netease WHERE qid=%s and phone=%s',
+                        [self.friend.id, self.msg[1]]
+                    )
+                    print(str(res) + '\n 1')
+                    if res:
+                        res = db.update(
+                            'DELETE FROM netease WHERE qid=%s and phone=%s',
                             [self.friend.id, self.msg[1]]
                         )
-                        print(str(res) + '\n 1')
+                        print(str(res) + '\n 2')
                         if res:
-                            res = db.update(
-                                'DELETE FROM netease WHERE qid=%s and phone=%s',
-                                [self.friend.id, self.msg[1]]
-                            )
-                            print(str(res) + '\n 2')
-                            if res:
-                                self.resp = MessageChain.create([
-                                    Plain('移除成功！')
-                                ])
-                        else:
                             self.resp = MessageChain.create([
-                                Plain('该账号不存在！')
+                                Plain('移除成功！')
                             ])
-            elif isstartswith(self.msg[0], 'list'):
-                if not message_source(self):
-                    with MysqlDao() as db:
-                        res = db.query(
-                            'SELECT phone FROM netease WHERE qid=%s',
-                            [self.friend.id]
-                        )
+                    else:
                         self.resp = MessageChain.create([
-                            Plain('\n'.join([f'{phone[0]}' for phone in res]))
+                            Plain('该账号不存在！')
                         ])
+            elif isstartswith(self.msg[0], 'list'):
+                if not hasattr(self, 'friend'):
+                    self.resp = MessageChain.create([
+                        Plain('请私聊使用该命令!')
+                    ])
+                    return
+                with MysqlDao() as db:
+                    res = db.query(
+                        'SELECT phone FROM netease WHERE qid=%s',
+                        [self.friend.id]
+                    )
+                    self.resp = MessageChain.create([
+                        Plain('\n'.join([f'{phone[0]}' for phone in res]))
+                    ])
             elif isstartswith(self.msg[0], 'rp'):
                 req = json.loads(await doHttpRequest('https://api.muxiaoguo.cn/api/163reping', 'GET'))
                 ans = req['data']
