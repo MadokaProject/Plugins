@@ -9,13 +9,11 @@ from graia.application.message.elements.internal import MessageChain, Source, Pl
 from graia.broadcast.interrupt.waiter import Waiter
 
 from app.core.config import BOTNAME, MASTER_QQ
+from app.core.settings import *
 from app.entities.user import *
 from app.plugin.base import Plugin
 from app.util.tools import isstartswith
 
-MEMBER_RUNING_LIST = []
-GROUP_RUNING_LIST = []
-GROUP_GAME_PROCESS = {}
 WORD = {
     "word": [
         "安全帽",
