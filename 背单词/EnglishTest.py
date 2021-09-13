@@ -204,6 +204,7 @@ async def random_word(bookid):
     with MysqlDao() as __db:
         p = __db.query('SELECT * FROM word_dict WHERE bookId=%s', [str(bookid)])
         data = random.choice(p)
+        print(data[0])
         return [data[0], data[1], data[2]]
 
 
