@@ -26,7 +26,7 @@ class WereWolfGame(Plugin):
         '.狼人杀/.wolf 创建/create\t创建狼人杀游戏\r\n' \
         '.狼人杀/.wolf 加入/join\t加入狼人杀游戏\r\n' \
         '.狼人杀/.wolf 退出/exit\t退出狼人杀游戏\r\n' \
-        '.狼人杀/.wolf 状态/status\t查看狼人杀状态'
+        '.狼人杀/.wolf 结束/stop\t强制结束狼人杀游戏(管理员)'
 
     async def judge_playing(self):
         """判断用户是否正在游戏中"""
@@ -86,6 +86,11 @@ class WereWolfGame(Plugin):
             self.print_help()
             return
         try:
+            if not hasattr(self, 'group'):
+                self.resp = MessageChain.create([
+                    Plain('独乐乐不如众乐乐，请在群聊内使用该命令跟大家一起玩吧!')
+                ])
+                return
             if isstartswith(self.msg[0], ['创建', 'create']):
                 """创建狼人杀游戏房间"""
                 # 检查机器人是否为管理
@@ -199,17 +204,21 @@ class WereWolfGame(Plugin):
                                             await self.initialize_game()
                                             # 游戏过程
                                             await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                                Plain(f'当前为{len(GROUP_GAME_PROCESS[self.group.id]["player"])}人'
-                                                      f'{"屠城" if len(GROUP_GAME_PROCESS[self.group.id]["player"] == 9) else "屠边"}局')
+                                                Plain(f'当前为{len(GROUP_GAME_PROCESS[self.group.id]["player"])}人\r\n'),
+                                                Plain(
+                                                    f'{"屠边" if len(GROUP_GAME_PROCESS[self.group.id]["player"]) == 9 else "屠城"}局')
                                             ]))
                                             await self.app.sendGroupMessage(self.group, MessageChain.create(
                                                 [Plain('游戏将在5秒后开始，请在私聊消息中查看自己的身份牌')]))
-                                            await self.app.muteAll(self.group.id)  # 开始游戏，全群禁言
-                                            for index, __player in enumerate(GROUP_GAME_PROCESS[self.group.id]['player']):
+                                            # 开始游戏，全群禁言
+                                            await self.app.muteAll(self.group.id)
+                                            for index, __player in enumerate(
+                                                    GROUP_GAME_PROCESS[self.group.id]['player']):
                                                 await self.app.sendFriendMessage(__player, MessageChain.create([
                                                     Plain('游戏即将开始\r\n'),
-                                                    Plain(f'你的序号是: {index + 1}号'),
-                                                    Plain(f'你的身份是: {positions_info[GROUP_GAME_PROCESS[self.group.id]["position"][__player]["position"]]}'),
+                                                    Plain(f'你的序号是: {index + 1}号\r\n'),
+                                                    Plain(
+                                                        f'你的身份是: {positions_info[GROUP_GAME_PROCESS[self.group.id]["position"][__player]["position"]]}'),
                                                     Plain('\r\n请准备')
                                                 ]))
                                             await asyncio.sleep(5)
@@ -222,7 +231,8 @@ class WereWolfGame(Plugin):
                                                     f'{index + 1}:\t{group_user[__player]}\t{positions_info[GROUP_GAME_PROCESS[self.group.id]["position"][__player]["position"]]}'
                                                     for index, __player in GROUP_GAME_PROCESS[self.group.id]['player']))
                                             ]))
-                                            await self.app.unmuteAll(self.group.id)  # 结束游戏，全群解除禁言
+                                            # 结束游戏，全群解除禁言
+                                            await self.app.unmuteAll(self.group.id)
                                             # 将用户移除正在游戏中
                                             MEMBER_RUNING_LIST.remove(self.member.id)
                                             for __player in GROUP_GAME_PROCESS[self.group.id]['player']:
@@ -339,6 +349,21 @@ class WereWolfGame(Plugin):
                     At(self.member.id),
                     Plain('退出成功')
                 ]))
+            elif isstartswith(self.msg[0], ['结束', 'stop']):
+                if self.group.id not in GROUP_RUNING_LIST:  # 检查该群是否在游戏中
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('该群不在游戏中，无法使用该命令！')]))
+                    return
+                if self.member.permission == MemberPerm.Member and self.member.id != GROUP_GAME_PROCESS[self.group.id]['owner']:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        Plain('你无权限操作此命令，该命令仅管理员或房间创建者可以执行')
+                    ]))
+                    return
+                # kill 所有狼人，播报等待当前流程结束
+                group_id = GROUP_GAME_PROCESS[self.group.id]
+                for player in group_id['player']:
+                    if group_id['position'][player]['position'] == 'wolf':
+                        group_id['position'][player]['survive'] = 0
+                await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('已执行强制结束游戏，请等待当前流程结束')]))
             else:
                 self.args_error()
                 return
@@ -347,19 +372,21 @@ class WereWolfGame(Plugin):
             self.args_error()
         except Exception as e:
             print(e)
-            await self.app.unmuteAll(self.group.id)  # 未知错误结束游戏时，全群解除禁言
             self.unkown_error()
 
     async def start_game(self):
         days = 1  # 初始化天数
         now_speak = None  # 白天正在发言的玩家
         player_votes = {}  # 白天放逐投票
+        player_votes_result = None  # 白天放逐投票结果
         survive_info = {1: '存活', 0: '死亡'}
         wolfs = []  # 狼人
         prophet = None  # 预言家
         guard = None  # 守卫
         witch = None  # 女巫
+        witch_kill = None  # 女巫的击杀
         hunter = None  # 猎人
+        hunter_kill = None  # 猎人的击杀
         player_number = {k + 1: v for k, v in enumerate(GROUP_GAME_PROCESS[self.group.id]['player'])}  # 玩家序号: QQ号
         members = await self.app.memberList(self.group.id)
         group_user = {item.id: item.name for item in members}  # 群组所有人QQ号: 昵称
@@ -386,9 +413,9 @@ class WereWolfGame(Plugin):
             if submit_answer_friend.id == now_speak:
                 # 转发消息至群组
                 await self.app.sendGroupMessage(self.group, MessageChain.create([
-                    Plain(f'{group_user[now_speak]}说:\r\n{saying}')
+                    Plain(f'{list(player_number.values()).index(now_speak)}号{group_user[now_speak]}说:\r\n{saying}')
                 ]))
-                if all([saying_len == 1, saying_len == '过']):
+                if saying == '过':
                     return
 
         # 白天放逐投票阶段
@@ -398,14 +425,25 @@ class WereWolfGame(Plugin):
             saying = submit_answer_message.asDisplay().upper()
             saying_len = len(saying)
             if all([submit_answer_friend.id in player_number.values(),
-                    group_id['position'][submit_answer_friend.id]['survive'] == 1]):
+                    group_id['position'][submit_answer_friend.id]['survive'] == 1]):  # 在玩家列表并且存活
                 try:
-                    if all([saying_len == 1, int(saying[0]) in range(1, len(GROUP_GAME_PROCESS[self.group.id]['player']))]):
-                        player_votes[submit_answer_friend.id] = int(saying[0])
+                    if saying == '弃票':
+                        player_votes[submit_answer_friend.id] = None
                         await self.app.sendFriendMessage(submit_answer_friend.id,
-                                                         MessageChain.create([Plain(f'投票成功，当前投票：{saying[0]}号')]))
+                                                         MessageChain.create([Plain('你选择了弃票')]))
+                    elif all([saying_len == 1, int(saying[0]) in range(1, len(group_id['player']) + 1)]):
+                        if group_id['position'][player_number[int(saying[0])]]['survive'] == 0:  # 判断被投票玩家是否死亡
+                            await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
+                                Plain('该玩家已死亡，请勿鞭尸')
+                            ]))
+                        else:
+                            player_votes[submit_answer_friend.id] = int(saying[0])
+                            await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
+                                Plain(f'投票成功，当前投票：{saying[0]}号')
+                            ]))
                 except:
-                    await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([Plain('请发送玩家序号进行投票')]))
+                    await self.app.sendFriendMessage(submit_answer_friend.id,
+                                                     MessageChain.create([Plain('请发送玩家序号进行投票，弃票请发送 ‘弃票’')]))
 
         # 等待狼人发言|投票
         @Waiter.create_using_function([FriendMessage])
@@ -423,15 +461,20 @@ class WereWolfGame(Plugin):
                         ]))
                 # 投票
                 try:
-                    if all([saying[0] == '刀', saying_len == 2, int(saying[1]) in range(1, 10)]):
-                        GROUP_GAME_PROCESS[self.group.id]['position'][submit_answer_friend.id]['ability'] = int(saying[1])
-                        await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
-                            Plain(f'你选择了{int(saying[1])}号')
-                        ]))
+                    if all([saying[0] == '刀', saying_len == 2,
+                            int(saying[1]) in range(1, len(group_id['player']) + 1)]):
+                        if group_id['position'][player_number[int(saying[1])]]['survive'] == 0:
+                            await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
+                                Plain('该玩家已死亡，请勿鞭尸')
+                            ]))
+                        else:
+                            GROUP_GAME_PROCESS[self.group.id]['position'][submit_answer_friend.id]['ability'] = int(
+                                saying[1])
+                            await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
+                                Plain(f'你选择了{int(saying[1])}号')
+                            ]))
                 except:
-                    await self.app.sendFriendMessage(submit_answer_friend.id, MessageChain.create([
-                        Plain(f'你选择了{int(saying[1])}号')
-                    ]))
+                    pass
 
         # 等待预言家查验
         @Waiter.create_using_function([FriendMessage])
@@ -441,9 +484,11 @@ class WereWolfGame(Plugin):
             saying_len = len(saying)
             if all([submit_answer_friend.id == prophet, group_id['position'][prophet]['survive'] == 1]):
                 try:
-                    if all([saying[0] == '查', saying_len == 2, int(saying[1]) in range(1, 10),
+                    if all([saying[0] == '查', saying_len == 2, int(saying[1]) in range(1, len(group_id['player']) + 1),
                             player_number[int(saying[1])] != prophet]):
-                        if int(saying[1]) in group_id['position'][submit_answer_friend.id]['ability']:
+                        if group_id['position'][player_number[int(saying[1])]]['survive'] == 0:
+                            await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('该玩家已死亡，你无法查验')]))
+                        elif int(saying[1]) in group_id['position'][submit_answer_friend.id]['ability']:
                             await self.app.sendFriendMessage(prophet, MessageChain.create([
                                 Plain('该玩家你已查验，请选择其他玩家')
                             ]))
@@ -453,7 +498,8 @@ class WereWolfGame(Plugin):
                             await self.app.sendFriendMessage(prophet, MessageChain.create([
                                 Plain(f'你选择了查验{saying[1]}号，他的身份是:{position}')
                             ]))
-                            group_id['position'][submit_answer_friend.id]['ability'].append(int(saying[1]))  # 将该玩家加入已查验名单
+                            group_id['position'][submit_answer_friend.id]['ability'].append(
+                                int(saying[1]))  # 将该玩家加入已查验名单
                             return
                     else:
                         await self.app.sendFriendMessage(prophet, MessageChain.create([
@@ -471,19 +517,19 @@ class WereWolfGame(Plugin):
             saying = submit_answer_message.asDisplay().upper()
             saying_len = len(saying)
             if all([submit_answer_friend.id == guard, group_id['position'][guard]['survive'] == 1]):
-                try:
-                    if all([saying[0] == '守', saying_len == 2, int(saying[1]) in range(1, 10),
-                            group_id['position'][submit_answer_friend.id]['ability'] != int(saying[1])]):
+                if saying[0] == '守' and saying_len == 2 and int(saying[1]) in range(1, len(group_id['player']) + 1) and \
+                        group_id['position'][guard]['ability'] != int(saying[1]):
+                    # if all([saying[0] == '守', saying_len == 2, int(saying[1]) in range(1, 10),
+                    #         group_id['position'][guard]['ability'] != int(saying[1])]):
+                    if group_id['position'][player_number[int(saying[1])]]['survive'] == 0:  # 验证玩家是否死亡
+                        await self.app.sendFriendMessage(guard, MessageChain.create([Plain('该玩家已死亡，你无法守卫')]))
+                    else:
                         await self.app.sendFriendMessage(guard, MessageChain.create([
                             Plain(f'你选择了守卫{saying[1]}号')
                         ]))
-                        group_id['position'][submit_answer_friend]['ability'] = int(saying[1])
+                        group_id['position'][guard]['ability'] = int(saying[1])
                         return int(saying[1])
-                    else:
-                        await self.app.sendFriendMessage(guard, MessageChain.create([
-                            Plain('请发送 ‘守x’ 守卫对应玩家，你不能连续俩晚守卫同一个人')
-                        ]))
-                except:
+                else:
                     await self.app.sendFriendMessage(guard, MessageChain.create([
                         Plain('请发送 ‘守x’ 守卫对应玩家，你不能连续俩晚守卫同一个人')
                     ]))
@@ -511,11 +557,15 @@ class WereWolfGame(Plugin):
             saying_len = len(saying)
             if submit_answer_friend.id == witch:
                 try:
-                    if all([saying[0] == '毒', saying_len == 2, int(saying[1]) in range(1, 10)]):
-                        await self.app.sendFriendMessage(witch, MessageChain.create([
-                            Plain(f'你选择了毒{saying[1]}号')
-                        ]))
-                        return int(saying[1])
+                    if all([saying[0] == '毒', saying_len == 2,
+                            int(saying[1]) in range(1, len(group_id['player']) + 1)]):
+                        if group_id['position'][player_number[int(saying[1])]]['survive'] == 0:  # 若对应玩家死亡
+                            await self.app.sendFriendMessage(witch, MessageChain.create([Plain('该玩家已死亡，请勿鞭尸')]))
+                        else:
+                            await self.app.sendFriendMessage(witch, MessageChain.create([
+                                Plain(f'你选择了毒{saying[1]}号')
+                            ]))
+                            return int(saying[1])
                     else:
                         await self.app.sendFriendMessage(witch, MessageChain.create([
                             Plain('请发送 ‘毒x’ 对对应玩家使用毒药')
@@ -545,20 +595,23 @@ class WereWolfGame(Plugin):
             group_id = GROUP_GAME_PROCESS[self.group.id]
             saying = submit_answer_message.asDisplay().upper()
             saying_len = len(saying)
-            if submit_answer_friend.id == witch:
+            if submit_answer_friend.id == hunter:
                 try:
-                    if all([saying[0] == '杀', saying_len == 2, int(saying[1]) in range(1, 10),
-                            group_id['position'][player_number[int(saying[1])]]['survive'] == 1]):
-                        await self.app.sendFriendMessage(witch, MessageChain.create([
-                            Plain(f'你选择了猎杀{saying[1]}号')
-                        ]))
-                        return int(saying[1])
+                    if all([saying[0] == '杀', saying_len == 2,
+                            int(saying[1]) in range(1, len(group_id['player']) + 1)]):
+                        if group_id['position'][player_number[int(saying[1])]]['survive'] == 0:  # 若对应玩家死亡
+                            await self.app.sendFriendMessage(hunter, MessageChain.create([Plain('该玩家已死亡，请勿鞭尸')]))
+                        else:
+                            await self.app.sendFriendMessage(hunter, MessageChain.create([
+                                Plain(f'你选择了猎杀{saying[1]}号')
+                            ]))
+                            return int(saying[1])
                     else:
-                        await self.app.sendFriendMessage(witch, MessageChain.create([
+                        await self.app.sendFriendMessage(hunter, MessageChain.create([
                             Plain('请发送 ‘杀x’ 猎杀对应玩家')
                         ]))
                 except:
-                    await self.app.sendFriendMessage(witch, MessageChain.create([
+                    await self.app.sendFriendMessage(hunter, MessageChain.create([
                         Plain('请发送 ‘杀x’ 猎杀对应玩家')
                     ]))
 
@@ -576,6 +629,7 @@ class WereWolfGame(Plugin):
         async def wolf_behavior():
             """狼人行为"""
             for wolf in wolfs:
+                GROUP_GAME_PROCESS[self.group.id]['position'][wolf]['ability'] = None  # 清楚狼人的选择
                 await self.app.sendFriendMessage(wolf, MessageChain.create([
                     Plain('你的队友是:\r\n'),
                     Plain('\r\n'.join(f'{group_user[w]}' for w in wolfs))
@@ -604,61 +658,66 @@ class WereWolfGame(Plugin):
             else:
                 for wolf in wolfs:
                     await self.app.sendFriendMessage(wolf, MessageChain.create([Plain('今晚你们没有行动')]))
-                return False
+                return None
 
         async def prophet_behavior():
             """预言家行为"""
             if GROUP_GAME_PROCESS[self.group.id]['position'][prophet]['survive'] == 0:
                 await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('你已经死亡，无法查验玩家')]))
-                await asyncio.sleep(15)
-                return
+                await asyncio.sleep(30)
+                return None
             await self.app.sendFriendMessage(prophet, MessageChain.create([
                 Plain('请在30秒内选择你要查验的玩家'),
                 Plain(player_state),
-                Plain('发送 ‘查x’ 查验对应玩家')
+                Plain('\r\n发送 ‘查x’ 查验对应玩家')
             ]))
             try:
                 await asyncio.wait_for(self.inc.wait(wait_prophet_vote), timeout=30)
             except asyncio.TimeoutError:
-                await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('选择超时')]))
+                await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('选择结束')]))
 
         async def guard_behavior():
             """守卫行为"""
             if GROUP_GAME_PROCESS[self.group.id]['position'][guard]['survive'] == 0:
-                await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('你已经死亡，无法守卫玩家')]))
-                await asyncio.sleep(15)
-                return
+                await self.app.sendFriendMessage(guard, MessageChain.create([Plain('你已经死亡，无法守卫玩家')]))
+                await asyncio.sleep(30)
+                return None
             await self.app.sendFriendMessage(guard, MessageChain.create([
                 Plain('请在30秒内选择你要守卫的玩家'),
                 Plain(player_state),
-                Plain('发送 ‘守x’ 守卫对应玩家')
+                Plain('\r\n发送 ‘守x’ 守卫对应玩家')
             ]))
             try:
-                result = await asyncio.wait_for(self.inc.wait(wait_guard_vote), timeout=30)
-                if result:
-                    return result
+                result1 = await asyncio.wait_for(self.inc.wait(wait_guard_vote), timeout=30)
+                if result1:
+                    return result1
+                else:
+                    return None
             except asyncio.TimeoutError:
-                await self.app.sendFriendMessage(guard, MessageChain.create([Plain('选择超时')]))
+                await self.app.sendFriendMessage(guard, MessageChain.create([Plain('选择结束')]))
+            return None
 
         async def witch_behavior(will_kills):
             """女巫行为"""
             res = [False, False]
             if GROUP_GAME_PROCESS[self.group.id]['position'][witch]['survive'] == 0:
-                await self.app.sendFriendMessage(prophet, MessageChain.create([Plain('你已经死亡，无法进行操作')]))
+                await self.app.sendFriendMessage(witch, MessageChain.create([Plain('你已经死亡，无法进行操作')]))
                 await asyncio.sleep(30)
                 return res
             if 'antidote' in GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability']:  # 若女巫有解药
                 await self.app.sendFriendMessage(witch, MessageChain.create([
-                    Plain(f'昨晚{player_number[will_kills[0]]}号玩家死亡，要使用解药吗？\r\n回答 ‘是’ ‘否’' if will_kills[0] else '昨晚没有玩家死亡')
+                    Plain(
+                        f'昨晚{will_kills[0]}号{group_user[player_number[will_kills[0]]]}玩家死亡，要使用解药吗？\r\n回答 ‘是’ ‘否’' if
+                        will_kills[0] else '昨晚没有玩家死亡')
                 ]))
-                if will_kills:
+                if will_kills[0]:
                     try:
                         if await asyncio.wait_for(self.inc.wait(wait_witch_vote), timeout=30):
                             GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability'].remove('antidote')
                             res[0] = True
                             return res
                     except asyncio.TimeoutError:
-                        await self.app.sendFriendMessage(witch, MessageChain.create([Plain('选择超时')]))
+                        await self.app.sendFriendMessage(witch, MessageChain.create([Plain('选择结束')]))
             else:
                 await asyncio.sleep(1)
                 await self.app.sendFriendMessage(witch, MessageChain.create([Plain('你没有解药了')]))
@@ -666,7 +725,7 @@ class WereWolfGame(Plugin):
                 Plain('要使用毒药吗？\r\n'),
                 Plain('回答 ‘是’ ‘否’')
             ]))
-            if 'poison' in GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability']:
+            if 'poison' in GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability']:  # 检查有无毒药
                 try:
                     if await asyncio.wait_for(self.inc.wait(wait_witch_vote), timeout=30):  # 选择是否使用毒药
                         await self.app.sendFriendMessage(witch, MessageChain.create([
@@ -676,11 +735,11 @@ class WereWolfGame(Plugin):
                         ]))
                         result = await asyncio.wait_for(self.inc.wait(wait_witch_poison), timeout=30)  # 选择使用玩家
                         if result:
-                            GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability'].remove('poison')
+                            GROUP_GAME_PROCESS[self.group.id]['position'][witch]['ability'].remove('poison')  # 移除毒药
                             res[1] = result
                             return res
                 except asyncio.TimeoutError:
-                    await self.app.sendFriendMessage(witch, MessageChain.create([Plain('选择超时')]))
+                    await self.app.sendFriendMessage(witch, MessageChain.create([Plain('选择结束')]))
             else:
                 await asyncio.sleep(1)
                 await self.app.sendFriendMessage(witch, MessageChain.create([Plain('你没有毒药了')]))
@@ -701,11 +760,53 @@ class WereWolfGame(Plugin):
                     if result:
                         GROUP_GAME_PROCESS[self.group.id]['position'][hunter]['ability'] = player_number[result]
                         return result
+                    else:
+                        return None
             except asyncio.TimeoutError:
-                await self.app.sendFriendMessage(hunter, MessageChain.create([Plain('选择超时')]))
+                await self.app.sendFriendMessage(hunter, MessageChain.create([Plain('选择结束')]))
+            return None
+
+        async def game_over() -> bool:
+            """游戏结束验证流程"""
+            # 判断双方存活状态
+            player_number = {k + 1: v for k, v in enumerate(GROUP_GAME_PROCESS[self.group.id]['player'])}  # 重置玩家序号
+            wolf_player = [player for player in player_number.values() if
+                           GROUP_GAME_PROCESS[self.group.id]['position'][player]['survive'] == 1 and
+                           GROUP_GAME_PROCESS[self.group.id]['position'][player]['position'] == 'wolf']
+            if len(player_number) in [6, 7, 8]:  # 屠城局
+                people = [player for player in player_number.values() if
+                          GROUP_GAME_PROCESS[self.group.id]['position'][player]['survive'] == 1 and
+                          GROUP_GAME_PROCESS[self.group.id]['position'][player]['position'] in ['vil', 'prophet',
+                                                                                                'guard', 'witch']]
+                if (not wolf_player and not people) or not people:  # 若没有好人或双方都死亡
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，狼人胜利')]))
+                    return True
+                if not wolf_player:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，好人胜利')]))
+                    return True
+            else:  # 屠边局
+                priest = [player for player in player_number.values() if
+                          GROUP_GAME_PROCESS[self.group.id]['position'][player]['survive'] == 1 and
+                          GROUP_GAME_PROCESS[self.group.id]['position'][player]['position'] in ['prophet', 'hunter',
+                                                                                                'witch']]
+                vils = [player for player in player_number.values() if
+                        GROUP_GAME_PROCESS[self.group.id]['position'][player]['survive'] == 1 and
+                        GROUP_GAME_PROCESS[self.group.id]['position'][player]['position'] == 'vil']
+                if (not wolf_player and not priest or vils) or not priest or not vils:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，狼人胜利')]))
+                    return True
+                if not wolf_player:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，好人胜利')]))
+                    return True
+            return False
 
         while True:
-            first_speak_player = 1
+            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                Plain('玩家信息\r\n'),
+                Plain(player_state)
+            ]))
+            await asyncio.sleep(5)
+            first_speak_player = 1  # 初始化白天首位发言玩家序号
             await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('天黑请闭眼，狼人请睁眼')]))
             await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('请选择今晚你们要刀的对象')]))
             will_kill = [await wolf_behavior() or None]  # 狼人将要刀的玩家，为空则为空刀，询问女巫 or 守卫
@@ -714,6 +815,8 @@ class WereWolfGame(Plugin):
             if len(player_number) in [6, 7]:
                 await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('等待守卫操作')]))
                 guard_player = await guard_behavior()  # 守卫选择的玩家
+                if not guard_player:
+                    GROUP_GAME_PROCESS[self.group.id]['position'][guard]['ability'] = None  # 守卫没有选择，将守卫玩家清除
                 if will_kill[0] == guard_player:
                     will_kill[0] = None
             else:
@@ -722,30 +825,70 @@ class WereWolfGame(Plugin):
                 if result[0]:
                     will_kill[0] = None
                 if result[1]:
+                    witch_kill = result[1]
                     will_kill.append(result[1])
-                if will_kill and player_number[will_kill[0]] == hunter and player_number[result[1]] != hunter:  # 猎人不是女巫毒的
+                if will_kill[0] and player_number[int(will_kill[0])] == hunter and (
+                        not witch_kill or player_number[int(witch_kill)] != hunter):  # 猎人不是女巫毒的
                     hunter_kill = await hunter_behavior()  # 等待猎人选择
                     will_kill.append(hunter_kill or None)
-            kill = [i for i in will_kill if i is not None]  # 序号
+            kill = [int(i) for i in will_kill if i is not None]  # 序号
             if kill:
                 for __kill in kill:
                     GROUP_GAME_PROCESS[self.group.id]['position'][player_number[__kill]]['survive'] = 0  # 记录夜晚死亡的玩家
-                first_speak_player = sorted(kill, reverse=True)[0]
+                first_speak_player = sorted(kill, reverse=True)[0] + 1
                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                     Plain(f'（第{days}天）天亮了，昨晚'),
-                    Plain(', '.join(f'{group_user[k]}' for k in kill)),
-                    Plain(f'死亡，从{first_speak_player}号开始发言')
+                    Plain(', '.join(f'{k}号: {group_user[player_number[k]]}' for k in kill)),
+                    Plain(f'死亡')
                 ]))
+                player_state = '\r\n'.join(  # 重新生成玩家存活状态
+                    f'{index + 1}: {group_user[player]}\t({survive_info[GROUP_GAME_PROCESS[self.group.id]["position"][player]["survive"]]})'
+                    for index, player in enumerate(GROUP_GAME_PROCESS[self.group.id]['player']))
+                if days == 1:
+                    for __kill in kill:
+                        now_speak = player_number[__kill]
+                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            At(now_speak),
+                            Plain(f'请{__kill}号{group_user[now_speak]}发表遗言')
+                        ]))
+                        await self.app.sendFriendMessage(now_speak, MessageChain.create([
+                            Plain('玩家信息\r\n'),
+                            Plain(player_state),
+                            Plain('\r\n请发表遗言')
+                        ]))
+                        try:
+                            await asyncio.wait_for(self.inc.wait(player_speaking), timeout=60)
+                        except asyncio.TimeoutError:
+                            await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('发言结束')]))
+                elif hunter_kill and hunter_kill != witch_kill:  # 若猎人开枪并且对象不是女巫击杀的对象
+                    now_speak = player_number[int(hunter_kill)]
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        At(now_speak),
+                        Plain(f'请{hunter_kill}号{group_user[now_speak]}发表遗言')
+                    ]))
+                    await self.app.sendFriendMessage(now_speak, MessageChain.create([
+                        Plain('玩家信息\r\n'),
+                        Plain(player_state),
+                        Plain('\r\n请发表遗言')
+                    ]))
+                    try:
+                        await asyncio.wait_for(self.inc.wait(player_speaking), timeout=60)
+                    except asyncio.TimeoutError:
+                        await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('发言结束')]))
+                if game_over():  # 检查游戏是否结束
+                    return
             else:
                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                     Plain(f'（第{days}天）天亮了，昨晚是平安夜')
                 ]))
-            # 生成发言顺序表
-            speak_player = [i for i in range(first_speak_player, len(player_number) + 1)]
-            __speak_player = [i for i in range(1, first_speak_player)]
-            speak_player += __speak_player
+            # 生成发言顺序表(将死亡玩家排除)
+            speak_player = [i for i in range(first_speak_player, len(player_number) + 1) if
+                            GROUP_GAME_PROCESS[self.group.id]['position'][player_number[i]]['survive'] == 1]
+            __speak_player = [i for i in range(1, first_speak_player - 1) if
+                              GROUP_GAME_PROCESS[self.group.id]['position'][player_number[i]]['survive'] == 1]
+            speak_player += __speak_player  # 序号
             for speak in speak_player:
-                now_speak = player_number[speak]
+                now_speak = player_number[speak]  # 序号转换玩家QQ
                 if GROUP_GAME_PROCESS[self.group.id]['position'][now_speak]['survive'] == 0:
                     # 该玩家已死亡跳过发言
                     continue
@@ -753,10 +896,15 @@ class WereWolfGame(Plugin):
                     At(now_speak),
                     Plain(f'下面由{speak}号: {group_user[now_speak]}发言\r\n请私聊我进行发言，时间:60秒')
                 ]))
+                await self.app.sendFriendMessage(now_speak, MessageChain.create([
+                    Plain('玩家信息\r\n'),
+                    Plain(player_state),
+                    Plain('\r\n请发言讨论')
+                ]))
                 try:
                     await asyncio.wait_for(self.inc.wait(player_speaking), timeout=60)
                 except asyncio.TimeoutError:
-                    await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('你发言时间到')]))
+                    await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('发言结束')]))
             player_state = '\r\n'.join(  # 重新生成玩家存活状态
                 f'{index + 1}: {group_user[player]}\t({survive_info[GROUP_GAME_PROCESS[self.group.id]["position"][player]["survive"]]})'
                 for index, player in enumerate(GROUP_GAME_PROCESS[self.group.id]['player']))
@@ -764,86 +912,120 @@ class WereWolfGame(Plugin):
                 Plain('进入投票阶段\r\n'),
                 Plain(player_state),
                 Plain('\r\n请在30秒内投票'),
-                Plain('\r\n私聊我发送序号即可投票，弃票不用发送消息')
+                Plain('\r\n私聊我发送序号即可投票，弃票请发送 ‘弃票’。可重复进行投票选择')
             ]))
             try:
                 player_votes.clear()  # 清空玩家投票信息
+                player_votes_result = None  # 清空放逐玩家结果
                 await asyncio.wait_for(self.inc.wait(wait_player_vote), timeout=30)  # 已处理死亡玩家不发言
             except asyncio.TimeoutError:
                 # 投票完成，统计投票
-                result = await voting_machines(player_votes.values())
-                if result:
-                    if len(result) == 1:
+                player_votes_result = await voting_machines(player_votes.values())  # 序号
+                if player_votes_result:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        Plain('投票结果\r\n'),
+                        Plain('\r\n'.join(
+                            f'{group_user[__vote_user]}  →  {__vote}' for __vote_user, __vote in player_votes.items())),
+                        Plain('\r\n未显示玩家即为弃票或已死亡')
+                    ]))
+                    if len(player_votes_result) == 1:
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            Plain(f'{result[0]}: {group_user[result[0]]}被放逐了')
+                            Plain(f'{player_votes_result[0]}: {group_user[player_number[player_votes_result[0]]]}被放逐了')
                         ]))
-                        GROUP_GAME_PROCESS[self.group.id]['position'][player_number[result[0]]]['survive'] = 0  # 记录玩家死亡
+                        GROUP_GAME_PROCESS[self.group.id]['position'][player_number[player_votes_result[0]]][
+                            'survive'] = 0  # 记录玩家死亡
                     else:
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            Plain('\r\n'.join(f'{result[i]}: {group_user[result[i]]}' for i in range(len(result)))),
+                            Plain('\r\n'.join(
+                                f'{player_votes_result[i]}: {group_user[player_number[player_votes_result[i]]]}' for i
+                                in range(len(player_votes_result)))),
                             Plain('\r\n上述玩家票数一致，将进行一次辩论')
                         ]))
-                        for speak in result:
-                            now_speak = speak
+                        for speak in player_votes_result:
+                            now_speak = player_number[speak]
+                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                At(now_speak),
+                                Plain(f'下面由{speak}号: {group_user[now_speak]}发言\r\n请私聊我进行发言，时间:60秒')
+                            ]))
+                            await self.app.sendFriendMessage(now_speak, MessageChain.create([
+                                Plain('玩家信息\r\n'),
+                                Plain(player_state),
+                                Plain('\r\n请发言讨论')
+                            ]))
                             try:
                                 await asyncio.wait_for(self.inc.wait(player_speaking), timeout=60)
                             except asyncio.TimeoutError:
-                                await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('你发言时间到')]))
+                                await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('发言结束')]))
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
                             Plain('进入投票阶段，请针对辩论玩家进行投票\r\n'),
-                            Plain('\r\n'.join(f'{i}: {group_user[player_number[i]]}' for i in result)),
+                            Plain('\r\n'.join(f'{i}: {group_user[player_number[i]]}' for i in player_votes_result)),
                             Plain('\r\n请在30秒内投票'),
-                            Plain('\r\n私聊我发送序号即可投票，弃票不用发送消息')
+                            Plain('\r\n私聊我发送序号即可投票，弃票请发送 ‘弃票’。可重复进行投票选择')
                         ]))
-                        player_number = {k: v for k, v in player_number.items() if k in result}  # 辩论玩家不能投票
+                        player_number = {k: v for k, v in player_number.items() if
+                                         k not in player_votes_result}  # 辩论玩家不能投票
                         try:
                             player_votes.clear()  # 清空玩家投票信息
+                            player_votes_result = None  # 清空放逐玩家结果
                             await asyncio.wait_for(self.inc.wait(wait_player_vote), timeout=30)
                         except asyncio.TimeoutError:
                             # 投票完成，统计投票
-                            result = await voting_machines(player_votes.values())
-                            if result:
-                                if len(result) == 1:
+                            player_votes_result = await voting_machines(player_votes.values())  # 序号
+                            if player_votes_result:
+                                await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                    Plain('投票结果(辩论玩家不参与投票)\r\n'),
+                                    Plain('\r\n'.join(
+                                        f'{group_user[__vote_user]}  →  {__vote}' for __vote_user, __vote in
+                                        player_votes.items())),
+                                    Plain('\r\n未显示玩家即为弃票或已死亡')
+                                ]))
+                                if len(player_votes_result) == 1:
                                     await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                        Plain(f'{result[0]}: {group_user[result[0]]}被放逐了')
+                                        Plain(
+                                            f'{player_votes_result[0]}: {group_user[player_number[player_votes_result[0]]]}被放逐了')
                                     ]))
-                                    GROUP_GAME_PROCESS[self.group.id]['position'][player_number[result[0]]]['survive'] = 0  # 记录玩家死亡
+                                    GROUP_GAME_PROCESS[self.group.id]['position'][
+                                        player_number[player_votes_result[0]]][
+                                        'survive'] = 0  # 记录玩家死亡
                                 else:
                                     await self.app.sendGroupMessage(self.group, MessageChain.create([
                                         Plain('没有玩家被放逐')
                                     ]))
                             else:
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                    Plain('没有玩家被放逐')
+                                    Plain('所有玩家都弃票了，没有玩家被放逐')
                                 ]))
                 else:
                     await self.app.sendGroupMessage(self.group, MessageChain.create([
-                        Plain('没有玩家被放逐')
+                        Plain('所有玩家都弃票了，没有玩家被放逐')
                     ]))
+                if all([player_votes_result, len(player_votes_result) == 1,
+                        player_votes_result[0] == hunter]):  # 若猎人被放逐
+                    hunter_kill = await hunter_behavior()  # 等待猎人选择
+                    if hunter_kill:
+                        GROUP_GAME_PROCESS[self.group.id]['position'][player_number[int(hunter_kill)]][
+                            'survive'] = 0  # 记录死亡的玩家
+                        now_speak = player_number[int(hunter_kill)]
+                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            At(now_speak),
+                            Plain(f'请{group_user[now_speak]}发表遗言')
+                        ]))
+                        await self.app.sendFriendMessage(now_speak, MessageChain.create([
+                            Plain('玩家信息\r\n'),
+                            Plain(player_state),
+                            Plain('\r\n请发表遗言')
+                        ]))
+                        try:
+                            await asyncio.wait_for(self.inc.wait(player_speaking), timeout=60)
+                        except asyncio.TimeoutError:
+                            await self.app.sendFriendMessage(now_speak, MessageChain.create([Plain('发言结束')]))
+            await asyncio.sleep(2)
             # 判断双方存活状态
-            wolf_player = [player for player in GROUP_GAME_PROCESS[self.group.id]['position'].keys() if
-                           player['survive'] == 1 and player['position'] == 'wolf']
-            if len(player_number) in [6, 7, 8]:  # 屠城局
-                people = [player for player in GROUP_GAME_PROCESS[self.group.id]['position'].keys() if
-                          player['survive'] == 1 and player['position'] in ['vil', 'prophet', 'guard', 'witch']]
-                if not wolf_player:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，好人胜利')]))
-                    return
-                elif not people:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，狼人胜利')]))
-                    return
-            else:  # 屠边局
-                priest = [player for player in GROUP_GAME_PROCESS[self.group.id]['position'].keys() if
-                          player['survive'] == 1 and player['position'] in ['prophet', 'hunter', 'witch']]
-                vils = [player for player in GROUP_GAME_PROCESS[self.group.id]['position'].keys() if
-                        player['survive'] == 1 and player['position'] in ['vil']]
-                if not wolf_player:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，好人胜利')]))
-                    return
-                elif not priest or not vils:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('游戏结束，狼人胜利')]))
-                    return
+            if game_over():
+                return
             days += 1  # 天数+1
+            hunter_kill = None  # 重置猎人击杀信息
+            witch_kill = None  # 重置女巫击杀信息
             player_number = {k + 1: v for k, v in enumerate(GROUP_GAME_PROCESS[self.group.id]['player'])}  # 重置玩家序号
             player_state = '\r\n'.join(  # 更新玩家存活状态
                 f'{index + 1}: {group_user[player]}\t({survive_info[GROUP_GAME_PROCESS[self.group.id]["position"][player]["survive"]]})'
