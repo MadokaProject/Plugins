@@ -1,0 +1,101 @@
+from graia.application import MessageChain
+from graia.application.message.elements.internal import Image, Plain
+
+from app.api.doHttp import doHttpRequest
+from app.core.settings import CONFIG
+from app.entities.user import *
+from app.plugin.base import Plugin
+from app.util.tools import isstartswith
+
+
+class Setu(Plugin):
+    entry = ['.涩图', '.setu']
+    brief_help = '\r\n▶涩图: setu'
+    full_help = \
+        '.涩图/.setu\t消耗10积分随机获取一张setu\r\n' \
+        '.涩图/.setu 搜 uid=[uid] tag=[tag]\t消耗15积分根据关键词搜索一张setu\r\n' \
+        '.涩图/.setu R18 [0/关 | 1/开]\t开启或关闭R-18模式, R-18模式请慎重使用(默认关闭)\r\n ' \
+        'uid: 作者信息\r\ntag: 作品标签(多个相似标签使用`|`分隔)'
+
+    num = {
+        # c: cost
+        'normal': {'c': 10},
+        'search': {'c': 15}
+    }
+
+    async def process(self):
+        _user_id = (getattr(self, 'friend', None) or getattr(self, 'group', None)).id
+        R18 = CONFIG[str(_user_id)]['setu_R18'] if CONFIG.__contains__(str(_user_id)) and CONFIG[str(_user_id)].__contains__('setu_R18') else 0
+        if not self.msg:
+            # 判断积分是否足够，如果无，要求报错并返回
+            the_one = BotUser((getattr(self, 'friend', None) or getattr(self, 'member', None)).id)
+            if int(the_one.get_points()) < self.num['normal']['c']:
+                self.point_not_enough()
+                return
+            response = await doHttpRequest(
+                url='https://api.lolicon.app/setu/v2',
+                method='GET',
+                _type='JSON',
+                params={'r18': R18},
+                headers={'Content-Type': 'application/json'}
+            )
+            if response['data']:
+                the_one.update_point(-self.num['normal']['c'])
+                self.resp = MessageChain.create([
+                    Image.fromNetworkAddress(response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
+                ])
+            else:
+                self.resp = MessageChain.create([
+                    Plain('setu: 获取失败')
+                ])
+            return
+        try:
+            if isstartswith(self.msg[0], '搜'):
+                assert len(self.msg) > 1
+                # 判断积分是否足够，如果无，要求报错并返回
+                the_one = BotUser((getattr(self, 'friend', None) or getattr(self, 'member', None)).id)
+                if int(the_one.get_points()) < self.num['search']['c']:
+                    self.point_not_enough()
+                    return
+                keyword = {i.split('=')[0]: i.split('=')[1] for i in self.msg[1:] if i.split('=')[0] in ['uid', 'tag'] and i.split('=')[1] is not None}
+                response = await doHttpRequest(
+                    url='https://api.lolicon.app/setu/v2',
+                    method='GET',
+                    _type='JSON',
+                    params=keyword.update({'r18': R18}),
+                    headers={'Content-Type': 'application/json'}
+                )
+                if response['data']:
+                    the_one.update_point(-self.num['search']['c'])
+                    self.resp = MessageChain.create([
+                        Image.fromNetworkAddress(response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
+                    ])
+                else:
+                    self.resp = MessageChain.create([
+                        Plain('setu: 搜索失败')
+                    ])
+            elif isstartswith(self.msg[0], 'R18'):
+                if not hasattr(self, 'group'):
+                    return
+                if not self.check_admin():
+                    self.resp = MessageChain.create([Plain('该命令仅管理员可用！')])
+                    return
+                assert len(self.msg) == 2 and self.msg[1] in ['0', '1', '关', '开']
+                with MysqlDao() as db:
+                    if db.update(
+                        'REPLACE INTO config(name, uid, value) VALUES (%s, %s, %s)',
+                        ['setu_R18', self.group.id, '0' if self.msg[1] in ['0', '关'] else '1']
+                    ):
+                        if not CONFIG.__contains__(str(self.group.id)):
+                            CONFIG.update({str(self.group.id): {}})
+                        CONFIG[str(self.group.id)].update({'setu_R18': 0 if self.msg[1] in ['0', '关'] else 1})
+                        self.resp = MessageChain.create([Plain('设置成功！')])
+            else:
+                self.args_error()
+                return
+        except AssertionError as e:
+            print(e)
+            self.args_error()
+        except Exception as e:
+            print(e)
+            self.unkown_error()
