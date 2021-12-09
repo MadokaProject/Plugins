@@ -8,7 +8,7 @@ from graia.application.group import Group, Member
 from graia.application.message.elements.internal import MessageChain, Source, Plain, At
 from graia.broadcast.interrupt.waiter import Waiter
 
-from app.core.config import BOTNAME, MASTER_QQ
+from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import *
 from app.plugin.base import Plugin
@@ -756,6 +756,7 @@ class DrawSomethingGame(Plugin):
             self.print_help()
             return
         try:
+            config = Config()
             if isstartswith(self.msg[0], '开始游戏'):
                 # 判断用户是否正在游戏中
                 if self.member.id in MEMBER_RUNING_LIST:
@@ -770,7 +771,7 @@ class DrawSomethingGame(Plugin):
                     ]))
                 except:
                     await self.app.sendGroupMessage(self.group, MessageChain.create([
-                        Plain(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {BOTNAME} 好友，用于发送题目")
+                        Plain(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {config.BOT_NAME} 好友，用于发送题目")
                     ]))
                     MEMBER_RUNING_LIST.remove(self.member.id)
                     return
@@ -927,16 +928,16 @@ class DrawSomethingGame(Plugin):
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
             elif isstartswith(self.msg[0], 'status'):
-                if self.friend.id == MASTER_QQ:
+                if self.friend.id == config.MASTER_QQ:
                     runlist_len = len(GROUP_RUNING_LIST)
                     runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
                     if runlist_len > 0:
-                        await self.app.sendFriendMessage(MASTER_QQ, MessageChain.create([
+                        await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
                             Plain(f"当前共有 {runlist_len} 个群正在玩你画我猜"),
                             Plain(f"\n{runlist_str}")
                         ]))
                     else:
-                        await self.app.sendFriendMessage(MASTER_QQ, MessageChain.create([
+                        await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
                             Plain(f"当前没有正在运行你画我猜的群")
                         ]))
             else:

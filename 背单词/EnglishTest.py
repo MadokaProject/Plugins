@@ -8,7 +8,7 @@ from graia.application.group import Group, Member
 from graia.application.message.elements.internal import At, Image_UnsafeBytes, MessageChain, Plain
 from graia.broadcast.interrupt.waiter import Waiter
 
-from app.core.config import MASTER_QQ
+from app.core.config import Config
 from app.entities.user import BotUser
 from app.plugin.base import Plugin, initDB
 from app.util.dao import MysqlDao
@@ -163,7 +163,8 @@ class EnglishTest(Plugin):
             return
         if isstartswith(self.msg[0], ['更新', 'update']):
             """更新题库"""
-            if self.member.id != int(MASTER_QQ):
+            config = Config()
+            if self.member.id != int(config.MASTER_QQ):
                 self.resp = MessageChain.create([
                     Plain('该命令仅管理员可用！')
                 ])

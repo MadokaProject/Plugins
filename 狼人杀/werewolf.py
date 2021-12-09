@@ -10,7 +10,7 @@ from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.elements.internal import MessageChain, Source, Plain, At
 from graia.broadcast.interrupt.waiter import Waiter
 
-from app.core.config import BOTNAME
+from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import *
 from app.plugin.base import Plugin
@@ -42,8 +42,9 @@ class WereWolfGame(Plugin):
                 Plain(f"本消息仅用于测试私信是否可用，无需回复\n{time.time()}")
             ]))
         except:
+            config = Config()
             await self.app.sendGroupMessage(self.group, MessageChain.create([
-                Plain(f"由于你未添加好友，暂时无法发起|加入狼人杀，请自行添加 {BOTNAME} 好友，用于发送身份牌及发言投票")
+                Plain(f"由于你未添加好友，暂时无法发起|加入狼人杀，请自行添加 {config.BOT_NAME} 好友，用于发送身份牌及发言投票")
             ]))
             MEMBER_RUNING_LIST.remove(self.member.id)
             return True
