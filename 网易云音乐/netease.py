@@ -7,6 +7,7 @@ import requests
 from Crypto.Cipher import AES
 from graia.application import MessageChain
 from graia.application.message.elements.internal import Plain
+from loguru import logger
 
 from app.api.doHttp import doHttpRequest
 from app.plugin.base import Plugin, Schedule
@@ -16,7 +17,7 @@ from app.util.tools import isstartswith
 
 class NetEase(Plugin):
     entry = ['.wyy', '.网易云']
-    brief_help = '\r\n▶网易云: wyy'
+    brief_help = '\r\n[√]\t网易云: wyy'
     full_help = \
         '.wyy rp\t网易云热评\r\n' \
         '.wyy qd [phone] [password]\t网易云签到\r\n' \
@@ -121,7 +122,7 @@ class NetEase(Plugin):
             print(e)
             self.args_error()
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.unkown_error()
 
 

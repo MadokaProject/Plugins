@@ -7,6 +7,7 @@ from graia.application.exceptions import UnknownTarget
 from graia.application.group import Group, Member
 from graia.application.message.elements.internal import MessageChain, Source, Plain, At
 from graia.broadcast.interrupt.waiter import Waiter
+from loguru import logger
 
 from app.core.config import Config
 from app.core.settings import *
@@ -746,7 +747,7 @@ WORD = {
 
 class DrawSomethingGame(Plugin):
     entry = ['.ds', '.你画我猜']
-    brief_help = '\r\n▶你画我猜：ds'
+    brief_help = '\r\n[√]\t你画我猜：ds'
     full_help = \
         '.你画我猜/.ds 开始游戏\t开始一局你画我猜游戏\r\n' \
         '.你画我猜/.ds status\t查看你画我猜状态'
@@ -947,5 +948,5 @@ class DrawSomethingGame(Plugin):
             print(e)
             self.args_error()
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.unkown_error()

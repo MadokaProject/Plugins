@@ -1,6 +1,7 @@
 import requests
 from graia.application import MessageChain
 from graia.application.message.elements.internal import Plain
+from loguru import logger
 
 from app.plugin.base import Plugin, Schedule, initDB
 from app.util.dao import MysqlDao
@@ -11,7 +12,7 @@ requests.packages.urllib3.disable_warnings()
 
 class SspanelQd(Plugin):
     entry = ['.sspanel', '.机场签到']
-    brief_help = '\r\n▶机场签到: sspanel'
+    brief_help = '\r\n[√]\t机场签到: sspanel'
     full_help = \
         '.机场签到/.sspanel qd [签到地址] [邮箱] [密码]\t机场签到\r\n' \
         '.机场签到/.sspanel add [签到地址] [邮箱] [密码]\t添加机场签到账号\r\n' \
@@ -79,7 +80,7 @@ class SspanelQd(Plugin):
             self.args_error()
 
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.unkown_error()
 
 

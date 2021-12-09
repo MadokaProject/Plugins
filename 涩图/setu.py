@@ -1,5 +1,6 @@
 from graia.application import MessageChain
 from graia.application.message.elements.internal import Image, Plain
+from loguru import logger
 
 from app.api.doHttp import doHttpRequest
 from app.core.settings import CONFIG
@@ -10,7 +11,7 @@ from app.util.tools import isstartswith
 
 class Setu(Plugin):
     entry = ['.涩图', '.setu']
-    brief_help = '\r\n▶涩图: setu'
+    brief_help = '\r\n[√]\t涩图: setu'
     full_help = \
         '.涩图/.setu\t消耗10积分随机获取一张setu\r\n' \
         '.涩图/.setu 搜 uid=[uid] tag=[tag]\t消耗15积分根据关键词搜索一张setu\r\n' \
@@ -97,5 +98,5 @@ class Setu(Plugin):
             print(e)
             self.args_error()
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.unkown_error()

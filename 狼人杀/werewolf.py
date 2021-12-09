@@ -9,6 +9,7 @@ from graia.application.friend import Friend
 from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.elements.internal import MessageChain, Source, Plain, At
 from graia.broadcast.interrupt.waiter import Waiter
+from loguru import logger
 
 from app.core.config import Config
 from app.core.settings import *
@@ -21,7 +22,7 @@ positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'gu
 
 class WereWolfGame(Plugin):
     entry = ['.wolf', '.狼人杀']
-    brief_help = '\r\n▶狼人杀：wolf'
+    brief_help = '\r\n[√]\t狼人杀：wolf'
     full_help = \
         '.狼人杀/.wolf 创建/create\t创建狼人杀游戏\r\n' \
         '.狼人杀/.wolf 加入/join\t加入狼人杀游戏\r\n' \
@@ -372,7 +373,7 @@ class WereWolfGame(Plugin):
             print(e)
             self.args_error()
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.unkown_error()
 
     async def start_game(self):

@@ -7,6 +7,7 @@ from graia.application.event.messages import GroupMessage
 from graia.application.group import Group, Member
 from graia.application.message.elements.internal import At, Image_UnsafeBytes, MessageChain, Plain
 from graia.broadcast.interrupt.waiter import Waiter
+from loguru import logger
 
 from app.core.config import Config
 from app.entities.user import BotUser
@@ -44,7 +45,7 @@ RUNNING = {}
 
 class EnglishTest(Plugin):
     entry = ['.背单词']
-    brief_help = '\r\n▶背单词：recite'
+    brief_help = '\r\n[√]\t背单词：recite'
     full_help = \
         '.背单词/.recite\t立即背诵一个单词。\r\n' \
         '.背单词/.recite 更新/update\t更新题库\r\n' \
@@ -158,7 +159,7 @@ class EnglishTest(Plugin):
                                     Plain(f"本次答案为：{word_data[0]}\n答题已结束，请重新开启")
                                 ]))
             except Exception as e:
-                print(e)
+                logger.exception(e)
                 self.unkown_error()
             return
         if isstartswith(self.msg[0], ['更新', 'update']):
@@ -195,7 +196,7 @@ class EnglishTest(Plugin):
                             )
                             index += 1
             except Exception as e:
-                print(e)
+                logger.exception(e)
                 self.unkown_error()
         else:
             self.args_error()
@@ -265,7 +266,7 @@ async def update_english_test(self):
                         )
             self.resp = MessageChain.create([Plain('题库更新完成！')])
         except Exception as e:
-            print(e)
+            logger.exception(e)
             self.resp = MessageChain.create([Plain(f'题库更新异常: {e}')])
 
 
