@@ -2,10 +2,11 @@ import asyncio
 import secrets
 import time
 
-from graia.application.event.messages import GroupMessage
-from graia.application.exceptions import UnknownTarget
-from graia.application.group import Group, Member
-from graia.application.message.elements.internal import MessageChain, Source, Plain, At
+from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.exception import UnknownTarget
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Source, Plain, At
+from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
@@ -884,7 +885,7 @@ class DrawSomethingGame(Plugin):
                             try:
                                 result = await asyncio.wait_for(self.inc.wait(start_game), timeout=180)
                                 if result:
-                                    owner = owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
+                                    owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
                                     BotUser(owner).update_point(2)
                                     BotUser(str(result[0].id)).update_point(1)
                                     GROUP_RUNING_LIST.remove(self.group.id)

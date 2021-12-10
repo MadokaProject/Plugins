@@ -3,9 +3,10 @@ import json
 import os
 import random
 
-from graia.application.event.messages import GroupMessage
-from graia.application.group import Group, Member
-from graia.application.message.elements.internal import At, Image_UnsafeBytes, MessageChain, Plain
+from graia.ariadne.event.message import GroupMessage
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import At, Image, Plain
+from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
@@ -92,7 +93,7 @@ class EnglishTest(Plugin):
                 bookid_image = await create_image("\n".join(booklist))
                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                     Plain("请输入你想要选择的词库ID"),
-                    Image_UnsafeBytes(bookid_image.getvalue())
+                    Image(data_bytes=bookid_image.getvalue())
                 ]))
 
                 try:
@@ -181,7 +182,7 @@ class EnglishTest(Plugin):
                     res = db.query(
                         "SELECT uid, english_answer FROM user ORDER BY english_answer DESC"
                     )
-                    members = await self.app.memberList(self.group.id)
+                    members = await self.app.getMemberList(self.group.id)
                     group_user = {item.id: item.name for item in members}
                     self.resp = MessageChain.create([Plain('群内英语答题排行：\r\n')])
                     index = 1
@@ -189,7 +190,7 @@ class EnglishTest(Plugin):
                         if item[1] == 0:
                             continue
                         if int(item[0]) in group_user.keys():
-                            self.resp.plus(
+                            self.resp.extend(
                                 MessageChain.create([Plain(
                                     '%d. ' % index + group_user[int(item[0])] + ': %d\r\n' % item[1]
                                 )])

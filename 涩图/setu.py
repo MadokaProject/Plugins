@@ -1,5 +1,5 @@
-from graia.application import MessageChain
-from graia.application.message.elements.internal import Image, Plain
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Image, Plain
 from loguru import logger
 
 from app.api.doHttp import doHttpRequest
@@ -26,7 +26,8 @@ class Setu(Plugin):
 
     async def process(self):
         _user_id = (getattr(self, 'friend', None) or getattr(self, 'group', None)).id
-        R18 = CONFIG[str(_user_id)]['setu_R18'] if CONFIG.__contains__(str(_user_id)) and CONFIG[str(_user_id)].__contains__('setu_R18') else 0
+        R18 = CONFIG[str(_user_id)]['setu_R18'] if CONFIG.__contains__(str(_user_id)) and CONFIG[
+            str(_user_id)].__contains__('setu_R18') else 0
         if not self.msg:
             # 判断积分是否足够，如果无，要求报错并返回
             the_one = BotUser((getattr(self, 'friend', None) or getattr(self, 'member', None)).id)
@@ -43,7 +44,7 @@ class Setu(Plugin):
             if response['data']:
                 the_one.update_point(-self.num['normal']['c'])
                 self.resp = MessageChain.create([
-                    Image.fromNetworkAddress(response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
+                    Image(url=response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
                 ])
             else:
                 self.resp = MessageChain.create([
@@ -58,7 +59,8 @@ class Setu(Plugin):
                 if int(the_one.get_points()) < self.num['search']['c']:
                     self.point_not_enough()
                     return
-                keyword = {i.split('=')[0]: i.split('=')[1] for i in self.msg[1:] if i.split('=')[0] in ['uid', 'tag'] and i.split('=')[1] is not None}
+                keyword = {i.split('=')[0]: i.split('=')[1] for i in self.msg[1:] if
+                           i.split('=')[0] in ['uid', 'tag'] and i.split('=')[1] is not None}
                 response = await doHttpRequest(
                     url='https://api.lolicon.app/setu/v2',
                     method='GET',
@@ -69,7 +71,8 @@ class Setu(Plugin):
                 if response['data']:
                     the_one.update_point(-self.num['search']['c'])
                     self.resp = MessageChain.create([
-                        Image.fromNetworkAddress(response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
+                        Image(
+                            url=response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
                     ])
                 else:
                     self.resp = MessageChain.create([
@@ -84,8 +87,8 @@ class Setu(Plugin):
                 assert len(self.msg) == 2 and self.msg[1] in ['0', '1', '关', '开']
                 with MysqlDao() as db:
                     if db.update(
-                        'REPLACE INTO config(name, uid, value) VALUES (%s, %s, %s)',
-                        ['setu_R18', self.group.id, '0' if self.msg[1] in ['0', '关'] else '1']
+                            'REPLACE INTO config(name, uid, value) VALUES (%s, %s, %s)',
+                            ['setu_R18', self.group.id, '0' if self.msg[1] in ['0', '关'] else '1']
                     ):
                         if not CONFIG.__contains__(str(self.group.id)):
                             CONFIG.update({str(self.group.id): {}})

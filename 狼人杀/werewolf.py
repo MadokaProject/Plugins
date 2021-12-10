@@ -1,13 +1,13 @@
 import asyncio
 import random
 import time
-
 from collections import Counter
-from graia.application.event.messages import GroupMessage, FriendMessage
-from graia.application.exceptions import UnknownTarget
-from graia.application.friend import Friend
-from graia.application.group import Group, Member, MemberPerm
-from graia.application.message.elements.internal import MessageChain, Source, Plain, At
+
+from graia.ariadne.event.message import GroupMessage, FriendMessage
+from graia.ariadne.exception import UnknownTarget
+from graia.ariadne.message.chain import MessageChain
+from graia.ariadne.message.element import Source, Plain, At
+from graia.ariadne.model import Friend, Group, Member, MemberPerm
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
@@ -225,7 +225,7 @@ class WereWolfGame(Plugin):
                                                 ]))
                                             await asyncio.sleep(5)
                                             await self.start_game()
-                                            members = await self.app.memberList(self.group.id)
+                                            members = await self.app.getMemberList(self.group.id)
                                             group_user = {item.id: item.name for item in members}  # 群组所有人QQ号: 昵称
                                             await self.app.sendGroupMessage(self.group, MessageChain.create([
                                                 Plain('身份公布\r\n'),
@@ -256,7 +256,7 @@ class WereWolfGame(Plugin):
                                     except asyncio.TimeoutError:
                                         async def print_player(__time):
                                             """输出当前房间内玩家"""
-                                            members = await self.app.memberList(self.group.id)
+                                            members = await self.app.getMemberList(self.group.id)
                                             group_user = {item.id: item.name for item in members}
                                             num = len(GROUP_GAME_PROCESS[self.group.id]['player'])
                                             await self.app.sendGroupMessage(self.group, MessageChain.create([
@@ -355,7 +355,8 @@ class WereWolfGame(Plugin):
                 if self.group.id not in GROUP_RUNING_LIST:  # 检查该群是否在游戏中
                     await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('该群不在游戏中，无法使用该命令！')]))
                     return
-                if self.member.permission == MemberPerm.Member and self.member.id != GROUP_GAME_PROCESS[self.group.id]['owner']:
+                if self.member.permission == MemberPerm.Member and self.member.id != GROUP_GAME_PROCESS[self.group.id][
+                    'owner']:
                     await self.app.sendGroupMessage(self.group, MessageChain.create([
                         Plain('你无权限操作此命令，该命令仅管理员或房间创建者可以执行')
                     ]))
@@ -390,7 +391,7 @@ class WereWolfGame(Plugin):
         hunter = None  # 猎人
         hunter_kill = None  # 猎人的击杀
         player_number = {k + 1: v for k, v in enumerate(GROUP_GAME_PROCESS[self.group.id]['player'])}  # 玩家序号: QQ号
-        members = await self.app.memberList(self.group.id)
+        members = await self.app.getMemberList(self.group.id)
         group_user = {item.id: item.name for item in members}  # 群组所有人QQ号: 昵称
         player_state = '\r\n'.join(  # 玩家存活状态
             f'{index + 1}: {group_user[player]}\t({survive_info[GROUP_GAME_PROCESS[self.group.id]["position"][player]["survive"]]})'
