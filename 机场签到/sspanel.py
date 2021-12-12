@@ -3,14 +3,14 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from loguru import logger
 
-from app.plugin.base import Plugin, Schedule, initDB
+from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
 from app.util.tools import isstartswith
 
 requests.packages.urllib3.disable_warnings()
 
 
-class SspanelQd(Plugin):
+class Module(Plugin):
     entry = ['.sspanel', '.机场签到']
     brief_help = '\r\n[√]\t机场签到: sspanel'
     full_help = \
@@ -84,7 +84,7 @@ class SspanelQd(Plugin):
             self.unkown_error()
 
 
-class Tasker(Schedule):
+class Tasker(Scheduler):
     cron = '0 8 * * * 0'
 
     async def process(self):
@@ -170,7 +170,7 @@ class Tasker(Schedule):
         ]))
 
 
-class DB(initDB):
+class DB(InitDB):
 
     async def process(self):
         with MysqlDao() as __db:

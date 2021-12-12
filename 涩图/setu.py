@@ -9,7 +9,7 @@ from app.plugin.base import Plugin
 from app.util.tools import isstartswith
 
 
-class Setu(Plugin):
+class Module(Plugin):
     entry = ['.涩图', '.setu']
     brief_help = '\r\n[√]\t涩图: setu'
     full_help = \

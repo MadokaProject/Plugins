@@ -20,7 +20,7 @@ from app.util.tools import isstartswith
 positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'guard': '守卫', 'witch': '女巫', 'hunter': '猎人'}
 
 
-class WereWolfGame(Plugin):
+class Module(Plugin):
     entry = ['.wolf', '.狼人杀']
     brief_help = '\r\n[√]\t狼人杀：wolf'
     full_help = \

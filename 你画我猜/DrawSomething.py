@@ -746,7 +746,7 @@ WORD = {
 }
 
 
-class DrawSomethingGame(Plugin):
+class Module(Plugin):
     entry = ['.ds', '.你画我猜']
     brief_help = '\r\n[√]\t你画我猜：ds'
     full_help = \

@@ -12,7 +12,7 @@ from loguru import logger
 
 from app.core.config import Config
 from app.entities.user import BotUser
-from app.plugin.base import Plugin, initDB
+from app.plugin.base import Plugin, InitDB
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
 from app.util.tools import isstartswith
@@ -44,7 +44,7 @@ Process = [1, 2, 3, 4]
 RUNNING = {}
 
 
-class EnglishTest(Plugin):
+class Module(Plugin):
     entry = ['.背单词']
     brief_help = '\r\n[√]\t背单词：recite'
     full_help = \
@@ -271,7 +271,7 @@ async def update_english_test(self):
             self.resp = MessageChain.create([Plain(f'题库更新异常: {e}')])
 
 
-class DB(initDB):
+class DB(InitDB):
 
     async def process(self):
         with MysqlDao() as _db:

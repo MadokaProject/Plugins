@@ -10,12 +10,12 @@ from graia.ariadne.message.element import Plain
 from loguru import logger
 
 from app.api.doHttp import doHttpRequest
-from app.plugin.base import Plugin, Schedule
+from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
 from app.util.tools import isstartswith
 
 
-class NetEase(Plugin):
+class Module(Plugin):
     entry = ['.wyy', '.网易云']
     brief_help = '\r\n[√]\t网易云: wyy'
     full_help = \
@@ -34,76 +34,42 @@ class NetEase(Plugin):
         try:
             if isstartswith(self.msg[0], 'qd'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([
-                        Plain('请私聊使用该命令!')
-                    ])
+                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
                     return
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
                 await Tasker(self.app).NetEase_process_event(self.friend.id, self.msg[1], self.msg[2])
             elif isstartswith(self.msg[0], 'add'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([
-                        Plain('请私聊使用该命令!')
-                    ])
+                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
                     return
                 assert len(self.msg) == 3 and self.msg[1].isdigit()
                 with MysqlDao() as db:
-                    res = db.query(
-                        'SELECT * FROM netease WHERE phone=%s',
-                        [self.msg[1]]
-                    )
-                    if not res:
-                        res = db.update(
-                            'INSERT INTO netease (qid, phone, pwd) VALUES (%s, %s, %s)',
+                    if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [self.msg[1]]):
+                        if not db.update(
+                            'INSERT INTO Plugin_NetEase_Account (qid, phone, pwd) VALUES (%s, %s, %s)',
                             [self.friend.id, self.msg[1], self.msg[2]]
-                        )
-                        if not res:
+                        ):
                             raise Exception()
-                        self.resp = MessageChain.create([
-                            Plain('添加成功')
-                        ])
+                        self.resp = MessageChain.create([Plain('添加成功')])
                     else:
-                        self.resp = MessageChain.create([
-                            Plain('该账号已存在！')
-                        ])
+                        self.resp = MessageChain.create([Plain('该账号已存在！')])
             elif isstartswith(self.msg[0], 'remove'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([
-                        Plain('请私聊使用该命令!')
-                    ])
+                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
                     return
                 assert len(self.msg) == 2 and self.msg[1].isdigit()
                 with MysqlDao() as db:
-                    res = db.query(
-                        'SELECT * FROM netease WHERE qid=%s and phone=%s',
-                        [self.friend.id, self.msg[1]]
-                    )
-                    print(str(res) + '\n 1')
-                    if res:
-                        res = db.update(
-                            'DELETE FROM netease WHERE qid=%s and phone=%s',
-                            [self.friend.id, self.msg[1]]
-                        )
-                        print(str(res) + '\n 2')
-                        if res:
-                            self.resp = MessageChain.create([
-                                Plain('移除成功！')
-                            ])
+                    if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, self.msg[1]]):
+                        if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, self.msg[1]]):
+                            self.resp = MessageChain.create([Plain('移除成功！')])
                     else:
-                        self.resp = MessageChain.create([
-                            Plain('该账号不存在！')
-                        ])
+                        self.resp = MessageChain.create([Plain('该账号不存在！')])
             elif isstartswith(self.msg[0], 'list'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([
-                        Plain('请私聊使用该命令!')
-                    ])
+                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
                     return
                 with MysqlDao() as db:
-                    res = db.query(
-                        'SELECT phone FROM netease WHERE qid=%s',
-                        [self.friend.id]
-                    )
+                    res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
                     self.resp = MessageChain.create([
                         Plain('\n'.join([f'{phone[0]}' for phone in res]))
                     ])
@@ -126,13 +92,13 @@ class NetEase(Plugin):
             self.unkown_error()
 
 
-class Tasker(Schedule):
+class Tasker(Scheduler):
     cron = '0 8 * * * 0'
 
     async def process(self):
         with MysqlDao() as db:
             accounts = db.query(
-                'SELECT qid, phone, pwd FROM netease'
+                'SELECT qid, phone, pwd FROM Plugin_NetEase_Account'
             )
             for (qid, phone, pwd) in accounts:
                 await self.app.sendFriendMessage(int(qid), MessageChain.create([
@@ -269,7 +235,19 @@ class Tasker(Schedule):
             return object['code']
 
 
+class DB(InitDB):
+
+    async def process(self):
+        with MysqlDao() as __db:
+            __db.update(
+                "create table if not exists Plugin_NetEase_Account( \
+                    qid char(12) not null commit 'QQ号', \
+                    phone char(11) not null commit '登录手机', \
+                    pwd char(20) not null commit '登录密码')"
+            )
+
+
 if __name__ == '__main__':
-    a = NetEase(MessageChain.create([Plain('.wyy rp')]))
+    a = Module(MessageChain.create([Plain('.wyy rp')]))
     asyncio.run(a.get_resp())
     print(a.resp)

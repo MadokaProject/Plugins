@@ -6,7 +6,6 @@ from graia.ariadne.model import MemberInfo
 from loguru import logger
 from prettytable import PrettyTable
 
-from app.core.config import Config
 from app.plugin.base import Plugin
 from app.util.text2image import create_image
 from app.util.tools import isstartswith
@@ -44,7 +43,7 @@ def generate_color_code(index: int = None) -> str:
         return random.choice(list(color_code.values()))
 
 
-class ColorFulNickName(Plugin):
+class Module(Plugin):
     entry = ['.colorname', '.彩色昵称']
     brief_help = '\r\n[√]\t彩色群昵称：colorname'
     full_help = \
