@@ -241,9 +241,9 @@ class DB(InitDB):
         with MysqlDao() as __db:
             __db.update(
                 "create table if not exists Plugin_NetEase_Account( \
-                    qid char(12) not null commit 'QQ号', \
-                    phone char(11) not null commit '登录手机', \
-                    pwd char(20) not null commit '登录密码')"
+                    qid char(12) not null comment 'QQ号', \
+                    phone char(11) not null comment '登录手机', \
+                    pwd char(20) not null comment '登录密码')"
             )
 
 
