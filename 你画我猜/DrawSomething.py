@@ -930,7 +930,7 @@ class Module(Plugin):
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
             elif isstartswith(self.msg[0], 'status'):
-                if self.friend.id == config.MASTER_QQ:
+                if self.friend.id == int(config.MASTER_QQ):
                     runlist_len = len(GROUP_RUNING_LIST)
                     runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
                     if runlist_len > 0:

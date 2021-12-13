@@ -355,7 +355,7 @@ class Module(Plugin):
                 if self.group.id not in GROUP_RUNING_LIST:  # 检查该群是否在游戏中
                     await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('该群不在游戏中，无法使用该命令！')]))
                     return
-                if self.member.permission == MemberPerm.Member and self.member.id != GROUP_GAME_PROCESS[self.group.id][
+                if not self.check_admin() and self.member.id != GROUP_GAME_PROCESS[self.group.id][
                     'owner']:
                     await self.app.sendGroupMessage(self.group, MessageChain.create([
                         Plain('你无权限操作此命令，该命令仅管理员或房间创建者可以执行')

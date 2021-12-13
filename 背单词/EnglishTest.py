@@ -167,9 +167,7 @@ class Module(Plugin):
             """更新题库"""
             config = Config()
             if self.member.id != int(config.MASTER_QQ):
-                self.resp = MessageChain.create([
-                    Plain('该命令仅管理员可用！')
-                ])
+                self.not_admin()
                 return
             await self.app.sendGroupMessage(self.group, MessageChain.create([
                 Plain('正在更新题库，所需时间可能较长，请耐心等待')

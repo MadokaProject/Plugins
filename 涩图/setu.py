@@ -3,6 +3,7 @@ from graia.ariadne.message.element import Image, Plain
 from loguru import logger
 
 from app.api.doHttp import doHttpRequest
+from app.core.config import Config
 from app.core.settings import CONFIG
 from app.entities.user import *
 from app.plugin.base import Plugin
@@ -81,8 +82,9 @@ class Module(Plugin):
             elif isstartswith(self.msg[0], 'R18'):
                 if not hasattr(self, 'group'):
                     return
-                if not self.check_admin():
-                    self.resp = MessageChain.create([Plain('该命令仅管理员可用！')])
+                config = Config()
+                if self.member.id != int(config.MASTER_QQ):
+                    self.not_admin()
                     return
                 assert len(self.msg) == 2 and self.msg[1] in ['0', '1', '关', '开']
                 with MysqlDao() as db:
