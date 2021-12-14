@@ -45,7 +45,7 @@ RUNNING = {}
 
 
 class Module(Plugin):
-    entry = ['.背单词']
+    entry = ['recite', '.背单词']
     brief_help = '\r\n[√]\t背单词：recite'
     full_help = \
         '.背单词/.recite\t立即背诵一个单词。\r\n' \
