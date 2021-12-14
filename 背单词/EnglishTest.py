@@ -9,6 +9,7 @@ from graia.ariadne.message.element import At, Image, Plain
 from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
+from prettytable import PrettyTable
 
 from app.core.config import Config
 from app.entities.user import BotUser
@@ -184,16 +185,18 @@ class Module(Plugin):
                     group_user = {item.id: item.name for item in members}
                     self.resp = MessageChain.create([Plain('群内英语答题排行：\r\n')])
                     index = 1
-                    for item in res:
-                        if item[1] == 0:
+                    msg = PrettyTable()
+                    msg.field_names = ['序号', '群昵称', '答题数量']
+                    for qid, english_answer in res:
+                        if english_answer == 0 or int(qid) not in group_user.keys():
                             continue
-                        if int(item[0]) in group_user.keys():
-                            self.resp.extend(
-                                MessageChain.create([Plain(
-                                    '%d. ' % index + group_user[int(item[0])] + ': %d\r\n' % item[1]
-                                )])
-                            )
-                            index += 1
+                        msg.add_row([index, group_user[int(qid)], english_answer])
+                        index += 1
+                    msg.align = 'r'
+                    msg.align['群昵称'] = 'l'
+                    self.resp.extend(MessageChain.create([
+                        Image(data_bytes=(await create_image(msg.get_string())).getvalue())
+                    ]))
             except Exception as e:
                 logger.exception(e)
                 self.unkown_error()
@@ -205,7 +208,6 @@ async def random_word(bookid):
     with MysqlDao() as __db:
         p = __db.query('SELECT * FROM word_dict WHERE bookId=%s', [str(bookid)])
         data = random.choice(p)
-        print(data[0])
         return [data[0], data[1], data[2]]
 
 
