@@ -3,7 +3,7 @@ import random
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image as __Image, ImageDraw, ImageFont
+from PIL import Image as IMG, ImageDraw, ImageFont
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain, At, Image
@@ -206,11 +206,9 @@ class Module(Plugin):
                     },
                     "winer": None,
                 }
-                game_image = await to_thread(draw_game, game_data)
-                await safeSendGroupMessage(self.group, MessageChain.create([Image(data_bytes=game_image)]))
+                gif_frames = [IMG.open(await to_thread(draw_game, game_data))]
 
                 while True:
-                    await asyncio.sleep(2)
                     game_data = run_game(game_data.copy())
                     winer = [
                         player
@@ -229,24 +227,30 @@ class Module(Plugin):
                             game_data["winer"] = winer[0]
                         break
                     else:
-                        game_image = await to_thread(draw_game, game_data)
-                        await safeSendGroupMessage(
-                            self.group,
-                            MessageChain.create([Image(data_bytes=game_image)]),
-                        )
+                        gif_frames.append(IMG.open(await to_thread(draw_game, game_data)))
 
                 # 结束游戏
                 for player, data in game_data["player"].items():
                     if data["score"] >= 100:
                         game_data["player"][player].update({"score": 102})
-                game_image = await to_thread(draw_game, game_data)
+                gif_frames.append(IMG.open(await to_thread(draw_game, game_data)))
+                image = BytesIO()
+                gif_frames[0].save(
+                    image,
+                    format='GIF',
+                    append_images=gif_frames[1:],
+                    save_all=True,
+                    duration=1500,
+                    loop=0,
+                    optimize=False
+                )
                 await safeSendGroupMessage(
                     self.group,
-                    MessageChain.create([Image(data_bytes=game_image)]),
+                    MessageChain.create([Image(data_bytes=image.getvalue())]),
                 )
                 player_count = len(game_data["player"])
                 gold_count = (player_count * 5) - player_count
-                await asyncio.sleep(1)
+                await asyncio.sleep(15)
                 await safeSendGroupMessage(
                     self.group,
                     MessageChain.create([
@@ -288,7 +292,7 @@ def draw_game(data):
         (127, 185, 36),
     ]
     horse_name = ["①", "②", "③", "④", "⑤", "⑥"]
-    image = __Image.new("RGB", img_size, (255, 255, 255))
+    image = IMG.new("RGB", img_size, (255, 255, 255))
     draw = ImageDraw.Draw(image)
 
     for i, player in enumerate(data["player"], 0):
@@ -321,7 +325,7 @@ def draw_game(data):
     draw.text((10, arena_size[1] + 45), name_text, (0, 0, 0), font=font24)
     bio = BytesIO()
     image.save(bio, "jpeg")
-    return bio.getvalue()
+    return bio
 
 
 def run_game(data):
