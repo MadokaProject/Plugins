@@ -28,7 +28,9 @@ class Module(Plugin):
     full_help = \
         '.赛马/.hr\t赛马小游戏\r\n' \
         '.赛马/.hr 开始游戏/start\t开始一局赛马小游戏\r\n' \
-        '.赛马/.hr 退出游戏/exit\t退出或解散房间'
+        '创建房间后可执行的命令:\r\n' \
+        '加入赛马\t加入赛马小游戏\r\n' \
+        '退出赛马\t退出或解散房间'
 
     async def process(self):
         config = Config()
