@@ -129,7 +129,7 @@ class Module(Plugin):
                         try:
                             answer_qq = await asyncio.wait_for(self.inc.wait(waiter), timeout=15)
                             if answer_qq:
-                                BotUser(str(answer_qq)).update_english_answer(1)
+                                await BotUser(str(answer_qq)).update_english_answer(1)
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain("恭喜 "),
                                     At(answer_qq),

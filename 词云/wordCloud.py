@@ -17,7 +17,7 @@ from wordcloud import WordCloud, ImageColorGenerator
 from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.sendMessage import safeSendGroupMessage
-from app.util.tools import isstartswith
+from app.util.tools import isstartswith, to_thread
 
 BASEPATH = Path(__file__).parent
 MASK = numpy.array(IMG.open(BASEPATH.joinpath("./wordCloud/wordcloud.jpg")))
@@ -88,13 +88,6 @@ class Module(Plugin):
         except Exception as e:
             logger.exception(e)
             self.unkown_error()
-
-
-async def to_thread(func, /, *args, **kwargs):
-    loop = asyncio.get_running_loop()
-    ctx = contextvars.copy_context()
-    func_call = functools.partial(ctx.run, func, *args, **kwargs)
-    return await loop.run_in_executor(None, func_call)
 
 
 async def get_frequencies(msg_list):

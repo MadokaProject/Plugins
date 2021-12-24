@@ -12,7 +12,7 @@ from loguru import logger
 
 from app.core.config import Config
 from app.core.settings import *
-from app.entities.user import *
+from app.entities.user import BotUser
 from app.plugin.base import Plugin
 from app.util.tools import isstartswith
 
@@ -125,7 +125,7 @@ WORD = {
         "中国银行",
         "人民币",
         "支付宝",
-        "ABot",
+        "Madoka",
         "管理员",
         "电池",
         "西瓜",
@@ -844,12 +844,12 @@ class Module(Plugin):
                     GROUP_RUNING_LIST.append(self.group.id)
                     try:
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            Plain("是否确认在本群开启一场你画我猜？这将消耗你 4 点积分")
+                            Plain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
                         ]), quote=self.source)
                     except UnknownTarget:
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
                             At(self.member.id),
-                            Plain(" 是否确认在本群开启一场你画我猜？这将消耗你 4 点积分")
+                            Plain(f" 是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
                         ]))
                     try:
                         # 新游戏创建完成，进入等待玩家阶段
@@ -860,15 +860,15 @@ class Module(Plugin):
                                 "owner": self.member.id,
                                 "player": {}
                             }
-                            if BotUser(str(self.member.id)).get_points() < 4:
+                            if await BotUser(str(self.member.id)).get_points() < 4:
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     At(self.member.id),
-                                    Plain(" 你的积分不足，无法开始游戏")]))
+                                    Plain(f" 你的{config.COIN_NAME}不足，无法开始游戏")]))
                                 return
                             else:
-                                BotUser(str(self.member.id)).update_point(-4)
+                                await BotUser(str(self.member.id)).update_point(-4)
                                 question_len = len(question)
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain(f"本次题目为 {question_len} 个字，请等待 "),
@@ -886,31 +886,31 @@ class Module(Plugin):
                                 result = await asyncio.wait_for(self.inc.wait(start_game), timeout=180)
                                 if result:
                                     owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    BotUser(owner).update_point(2)
-                                    BotUser(str(result[0].id)).update_point(1)
+                                    await BotUser(owner).update_point(2)
+                                    await BotUser(str(result[0].id)).update_point(1)
                                     GROUP_RUNING_LIST.remove(self.group.id)
                                     del GROUP_GAME_PROCESS[self.group.id]
                                     await self.app.sendGroupMessage(self.group.id, MessageChain.create([
                                         Plain("恭喜 "),
                                         At(result[0].id),
-                                        Plain(f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点积分，本次游戏结束")
+                                        Plain(f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{config.COIN_NAME}，本次游戏结束")
                                     ]), quote=result[1])
                                 else:
                                     owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    BotUser(owner).update_point(1)
+                                    await BotUser(owner).update_point(1)
                                     GROUP_RUNING_LIST.remove(self.group.id)
                                     del GROUP_GAME_PROCESS[self.group.id]
                                     await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                        Plain("本次你画我猜已终止，将返还创建者 1 点积分")
+                                        Plain(f"本次你画我猜已终止，将返还创建者 1 点{config.COIN_NAME}")
                                     ]))
                             except asyncio.TimeoutError:
                                 owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
                                 question = GROUP_GAME_PROCESS[self.group.id]["question"]
-                                BotUser(owner).update_point(1)
+                                await BotUser(owner).update_point(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                    Plain("由于长时间没有人回答出正确答案，将返还创建者 1 点积分，本次你画我猜已结束"),
+                                    Plain(f"由于长时间没有人回答出正确答案，将返还创建者 1 点{config.COIN_NAME}，本次你画我猜已结束"),
                                     Plain(f"\n本次的答案为：{question}")
                                 ]))
 

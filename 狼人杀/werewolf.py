@@ -13,7 +13,7 @@ from loguru import logger
 
 from app.core.config import Config
 from app.core.settings import *
-from app.entities.user import *
+from app.entities.user import BotUser
 from app.plugin.base import Plugin
 from app.util.tools import isstartswith
 
@@ -179,17 +179,17 @@ class Module(Plugin):
                                 "player": [],  # 加入的游戏玩家
                                 "position": {}  # 职位等信息（开始游戏后生成）
                             }
-                            if BotUser(str(self.member.id)).get_points() < 4:
+                            if await BotUser(str(self.member.id)).get_points() < 4:
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     At(self.member.id),
-                                    Plain(" 你的积分不足，无法开始游戏")]))
+                                    Plain(f" 你的{Config().COIN_NAME}不足，无法开始游戏")]))
                                 # 将用户移除正在游戏中
                                 MEMBER_RUNING_LIST.remove(self.member.id)
                                 return
                             else:
-                                # BotUser(str(self.member.id)).update_point(-4)
+                                await BotUser(str(self.member.id)).update_point(-4)
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain("狼人杀游戏已创建，请等待群员加入游戏\r\n开始游戏请发送开始游戏\r\n解散游戏请发送解散游戏"),
                                 ]), quote=self.source)
