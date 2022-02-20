@@ -22,7 +22,7 @@ positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'gu
 
 class Module(Plugin):
     entry = ['.wolf', '.狼人杀']
-    brief_help = '\r\n[√]\t狼人杀：wolf'
+    brief_help = '\r\n[√]\t狼人杀: wolf'
     full_help = \
         '.狼人杀/.wolf 创建/create\t创建狼人杀游戏\r\n' \
         '.狼人杀/.wolf 加入/join\t加入狼人杀游戏\r\n' \

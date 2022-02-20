@@ -23,11 +23,11 @@ Madoka 插件中心
 >   "demo": {
 >     "name": "插件中文名",
 >     "author": "插件作者",
->     "version": "插件版本(用于判断更新)",
+>     "version": "插件版本",
 >     "resource": [
->         "demo.jpg",
->         "demoDir/",
->     ], # 资源文件直接写文件名, 目录用'/'结尾
+>         "demo1.jpg",
+>         "demoDir/demo2.jpg",
+>     ],
 >     "pypi": true / false  # 是否需要安装其他库，请将requirements.txt文件直接放入该目录
 >   }
 > }

@@ -4,7 +4,31 @@
         "author": "MadokaProject",
         "version": "0.0.1",
         "resource": [
-            "worddict/"
+            "worddict/BEC_2.json",
+            "worddict/ChuZhongluan_2.json",
+            "worddict/KaoYanluan_1.json",
+            "worddict/PEPGaoZhong_1.json",
+            "worddict/PEPGaoZhong_3.json",
+            "worddict/PEPGaoZhong_7.json",
+            "worddict/TOEFL_2.json",
+            "worddict/CET4luan_1.json",
+            "worddict/GaoZhong_2.json",
+            "worddict/Level4luan_1.json",
+            "worddict/PEPGaoZhong_10.json",
+            "worddict/PEPGaoZhong_4.json",
+            "worddict/PEPGaoZhong_8.json",
+            "worddict/CET6luan_1.json",
+            "worddict/GaoZhongluan_2.json",
+            "worddict/Level8_1.json",
+            "worddict/PEPGaoZhong_11.json",
+            "worddict/PEPGaoZhong_5.json",
+            "worddict/PEPGaoZhong_9.json",
+            "worddict/ChuZhong_2.json",
+            "worddict/IELTSluan_2.json",
+            "worddict/PEPChuZhong7_1.json",
+            "worddict/PEPGaoZhong_2.json",
+            "worddict/PEPGaoZhong_6.json",
+            "worddict/PEPXiaoXue3_1.json"
         ],
         "pypi": false
     },
@@ -36,7 +60,12 @@
         "author": "MadokaProject",
         "version": "0.0.1",
         "resource": [
-            "PetPetFrames/"
+            "PetPetFrames/frame0.png",
+            "PetPetFrames/frame1.png",
+            "PetPetFrames/frame2.png",
+            "PetPetFrames/frame3.png",
+            "PetPetFrames/frame4.png",
+            "PetPetFrames/template.gif"
         ],
         "pypi": false
     },
