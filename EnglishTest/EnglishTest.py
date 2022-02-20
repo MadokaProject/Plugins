@@ -244,8 +244,8 @@ async def update_english_test(self):
             return str
 
         try:
-            for filename in os.listdir("app/plugin/extension/EnglishTest/worddict"):
-                with open("app/plugin/extension/EnglishTest/worddict/" + filename, 'r', encoding='utf-8') as f:
+            for filename in os.listdir("app/plugin/extension/EnglishTest_res/worddict"):
+                with open("app/plugin/extension/EnglishTest_res/worddict/" + filename, 'r', encoding='utf-8') as f:
                     for line in f.readlines():
                         words = line.strip()
                         word_json = json.loads(words)

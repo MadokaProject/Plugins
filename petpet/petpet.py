@@ -10,7 +10,7 @@ from loguru import logger
 
 from app.plugin.base import Plugin
 
-FRAMES_PATH = Path(__file__).parent.joinpath("petpet/PetPetFrames")
+FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
 
 
 class Module(Plugin):

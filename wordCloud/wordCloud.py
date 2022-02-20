@@ -20,7 +20,7 @@ from app.util.sendMessage import safeSendGroupMessage
 from app.util.tools import isstartswith, to_thread
 
 BASEPATH = Path(__file__).parent
-MASK = numpy.array(IMG.open(BASEPATH.joinpath("./wordCloud/wordcloud.jpg")))
+MASK = numpy.array(IMG.open(BASEPATH.joinpath("./wordCloud_res/wordcloud.jpg")))
 FONT_PATH = Path("./app/resource/font").joinpath("sarasa-mono-sc-regular.ttf")
 STOPWORDS = BASEPATH.joinpath("stopwords")
 
