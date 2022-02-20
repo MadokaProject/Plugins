@@ -11,21 +11,21 @@ on:
 
 jobs:
   master:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
       - name: Run Curl
         run: |
           curl -u ${{ secrets.CODING_TOKEN_API }} \
-             -v -X POST  'https://volantis-x.coding.net/api/cci/job/387490/trigger' \
+             -v -X POST  'https://madokaproject.coding.net/api/cci/job/1105014/trigger' \
              -H 'Content-Type: application/json' \
              -d '
               {
                 "envs": [
                   {
                     "name": "BRANCH",
-                    "value": "main",
+                    "value": "master",
                     "sensitive": 0
                   }
                 ]
