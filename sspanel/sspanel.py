@@ -12,18 +12,32 @@ requests.packages.urllib3.disable_warnings()
 
 class Module(Plugin):
     entry = ['.sspanel', '.机场签到']
-    brief_help = '\r\n[√]\t机场签到: sspanel'
-    full_help = \
-        '.机场签到/.sspanel qd [签到地址] [邮箱] [密码]\t机场签到\r\n' \
-        '.机场签到/.sspanel add [签到地址] [邮箱] [密码]\t添加机场签到账号\r\n' \
-        '.机场签到/.sspanel remove [签到地址] [邮箱]\t删除机场签到账号\r\n' \
-        '.机场签到/.sspanel list\t列出您添加的机场签到账号\r\n' \
-        '============\r\n' \
-        '为保证账号安全，该服务仅私发有效'
+    brief_help = '机场签到'
+    full_help = {
+        'qd': {
+            '立即进行一次签到': '',
+            '[host]': '签到地址',
+            '[email]': '登录邮箱',
+            '[password]': '登录密码'
+        },
+        'add': {
+            '添加签到账号': '',
+            '[host]': '签到地址',
+            '[email]': '登录邮箱',
+            '[password]': '登录密码'
+        },
+        'remove': {
+            '删除签到账号': '',
+            '[host]': '签到地址',
+            '[email]': '登录邮箱'
+        },
+        'list': '列出您添加的签到账号',
+        '============\n为保证账号安全, 该服务仅私发有效': ''
+    }
 
     async def process(self):
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if not hasattr(self, 'friend'):

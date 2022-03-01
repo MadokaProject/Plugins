@@ -47,11 +47,12 @@ RUNNING = {}
 
 class Module(Plugin):
     entry = ['recite', '.背单词']
-    brief_help = '\r\n[√]\t背单词：recite'
-    full_help = \
-        '.背单词/.recite\t立即背诵一个单词。\r\n' \
-        '.背单词/.recite 更新/update\t更新题库\r\n' \
-        '.背单词/.recite 排行/rank\t显示群内已注册成员答题排行榜'
+    brief_help = '背单词'
+    full_help = {
+        '无参数': '开启一轮背单词',
+        '更新, update': '更新词库(仅主人可用)',
+        '排行, rank': '显示群内成员答题排行榜'
+    }
 
     async def process(self):
         if not hasattr(self, 'group'):
@@ -91,10 +92,9 @@ class Module(Plugin):
                     return
 
                 RUNNING[self.group.id] = None
-                bookid_image = await create_image("\n".join(booklist))
                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                     Plain("请输入你想要选择的词库ID"),
-                    Image(data_bytes=bookid_image.getvalue())
+                    Image(data_bytes=await create_image("\n".join(booklist)))
                 ]))
 
                 try:
@@ -195,7 +195,7 @@ class Module(Plugin):
                     msg.align = 'r'
                     msg.align['群昵称'] = 'l'
                     self.resp.extend(MessageChain.create([
-                        Image(data_bytes=(await create_image(msg.get_string())).getvalue())
+                        Image(data_bytes=await create_image(msg.get_string()))
                     ]))
             except Exception as e:
                 logger.exception(e)

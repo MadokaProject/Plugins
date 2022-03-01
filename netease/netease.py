@@ -17,19 +17,30 @@ from app.util.tools import isstartswith
 
 class Module(Plugin):
     entry = ['.wyy', '.网易云']
-    brief_help = '\r\n[√]\t网易云: wyy'
-    full_help = \
-        '.wyy rp\t网易云热评\r\n' \
-        '.wyy qd [phone] [password]\t网易云签到\r\n' \
-        '.wyy add [phone] [password]\t添加网易云自动签到\r\n' \
-        '.wyy remove [phone]\t移除该账号的网易云自动签到\r\n' \
-        '.wyy list\t列出您添加的网易云自动签到账号\r\n' \
-        '============\r\n' \
-        '为保证账号安全，签到服务仅私发有效'
+    brief_help = '网易云'
+    full_help = {
+        'rp': '网易云热评',
+        'qd': {
+            '立即进行一次签到': '',
+            '[phone]': '手机号',
+            '[password]': '登录密码'
+        },
+        'add': {
+            '添加自动签到': '',
+            '[phone]': '手机号',
+            '[password]': '登录密码'
+        },
+        'remove': {
+            '移出指定账号的自动签到': '',
+            '[phone]': '手机号'
+        },
+        'list': '列出您添加的自动签到账号',
+        '============\n为保证账号安全, 签到服务仅私发有效': ''
+    }
 
     async def process(self):
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if isstartswith(self.msg[0], 'qd'):

@@ -22,12 +22,13 @@ positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'gu
 
 class Module(Plugin):
     entry = ['.wolf', '.狼人杀']
-    brief_help = '\r\n[√]\t狼人杀: wolf'
-    full_help = \
-        '.狼人杀/.wolf 创建/create\t创建狼人杀游戏\r\n' \
-        '.狼人杀/.wolf 加入/join\t加入狼人杀游戏\r\n' \
-        '.狼人杀/.wolf 退出/exit\t退出狼人杀游戏\r\n' \
-        '.狼人杀/.wolf 结束/stop\t强制结束狼人杀游戏(管理员)'
+    brief_help = '狼人杀'
+    full_help = {
+        '创建, create': '创建一局狼人杀游戏',
+        '加入, join': '加入狼人杀游戏',
+        '退出, exit': '退出狼人杀游戏',
+        '强制结束, stop': '强制结束狼人杀游戏'
+    }
 
     async def judge_playing(self):
         """判断用户是否正在游戏中"""
@@ -85,7 +86,7 @@ class Module(Plugin):
 
     async def process(self):
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if not hasattr(self, 'group'):

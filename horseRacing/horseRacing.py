@@ -24,13 +24,16 @@ font24 = ImageFont.truetype(str(FONT_PATH.joinpath("sarasa-mono-sc-semibold.ttf"
 
 class Module(Plugin):
     entry = ['.hr', '.赛马']
-    brief_help = '\r\n[√]\t赛马: hr'
-    full_help = \
-        '.赛马/.hr\t赛马小游戏\r\n' \
-        '.赛马/.hr 开始游戏/start\t开始一局赛马小游戏\r\n' \
-        '创建房间后可执行的命令:\r\n' \
-        '加入赛马\t加入赛马小游戏\r\n' \
-        '退出赛马\t退出或解散房间'
+    brief_help = '赛马小游戏'
+    full_help = {
+        '开始游戏, start': '开始一局赛马小游戏',
+        '创建房间后可执行的命令:': {
+            '': '',
+            '提前开始': '成员不足6人时, 创建者可强制开始游戏',
+            '加入赛马': '加入赛马小游戏',
+            '退出赛马': '退出或解散房间'
+        }
+    }
 
     async def process(self):
         config = Config()
@@ -138,7 +141,7 @@ class Module(Plugin):
                         )
 
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if not hasattr(self, 'group'):

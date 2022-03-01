@@ -11,13 +11,21 @@ from app.util.tools import isstartswith
 
 
 class Module(Plugin):
-    entry = ['.涩图', '.setu']
-    brief_help = '\r\n[√]\t涩图: setu'
-    full_help = \
-        '.涩图/.setu\t消耗10积分随机获取一张setu\r\n' \
-        '.涩图/.setu 搜 uid=[uid] tag=[tag]\t消耗15积分根据关键词搜索一张setu\r\n' \
-        '.涩图/.setu R18 [0/关 | 1/开]\t开启或关闭R-18模式, R-18模式请慎重使用(默认关闭)\r\n ' \
-        'uid: 作者信息\r\ntag: 作品标签(多个相似标签使用`|`分隔)'
+    entry = ['.setu', '.涩图']
+    brief_help = '涩图'
+    full_help = {
+        '无参数': '消耗10资金随机获取一张setu',
+        '搜': {
+            '消耗15资金根据关键词搜索一张setu': '',
+            'uid=[uid]': '指定作者信息',
+            'tag=[tag]': '指定标签(多个相似标签使用`|`分隔)'
+        },
+        'R18': {
+            '开关R-18模式(慎用)[默认关闭]': '',
+            '[0 / 关]': '关闭R-18模式',
+            '[1 / 开]': '开启R-18模式'
+        }
+    }
 
     num = {
         # c: cost

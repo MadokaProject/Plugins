@@ -748,18 +748,19 @@ WORD = {
 
 class Module(Plugin):
     entry = ['.ds', '.你画我猜']
-    brief_help = '\r\n[√]\t你画我猜：ds'
-    full_help = \
-        '.你画我猜/.ds 开始游戏\t开始一局你画我猜游戏\r\n' \
-        '.你画我猜/.ds status\t查看你画我猜状态'
+    brief_help = '你画我猜'
+    full_help = {
+        '开始游戏, start': '开始一局你画我猜游戏',
+        'status': '查看你画我猜状态'
+    }
 
     async def process(self):
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             config = Config()
-            if isstartswith(self.msg[0], '开始游戏'):
+            if isstartswith(self.msg[0], ['开始游戏', 'start']):
                 # 判断用户是否正在游戏中
                 if self.member.id in MEMBER_RUNING_LIST:
                     return

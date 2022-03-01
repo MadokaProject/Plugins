@@ -30,15 +30,16 @@ RUNNING_LIST = []
 
 class Module(Plugin):
     entry = ['.wordcloud', '.词云']
-    brief_help = '\r\n[√]\t词云: wordcloud'
-    full_help = \
-        '.词云/.wordcloud 个人\t查看个人词云\r\n' \
-        '.词云/.wordcloud 本群\t查看本群词云'
+    brief_help = '词云'
+    full_help = {
+        '个人': '查看个人词云',
+        '本群': '查看本群词云'
+    }
 
     async def process(self):
         global RUNNING, RUNNING_LIST
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if not hasattr(self, 'group'):

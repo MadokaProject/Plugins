@@ -15,13 +15,14 @@ FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
 
 class Module(Plugin):
     entry = ['.pet', '.摸']
-    brief_help = '\r\n[√]\t摸：pet'
-    full_help = \
-        '.摸/.pet [@qq]\t摸对应用户'
+    brief_help = '摸摸'
+    full_help = {
+        '[@qq]': '@群成员'
+    }
 
     async def process(self):
         if not self.msg:
-            self.print_help()
+            await self.print_help()
             return
         try:
             if self.message.has(At):
