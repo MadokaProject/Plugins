@@ -46,7 +46,7 @@ RUNNING = {}
 
 
 class Module(Plugin):
-    entry = ['recite', '.背单词']
+    entry = ['.recite', '.背单词']
     brief_help = '背单词'
     full_help = {
         '无参数': '开启一轮背单词',
