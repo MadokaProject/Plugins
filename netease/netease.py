@@ -4,103 +4,86 @@ import hashlib
 import json
 
 import requests
+from arclet.alconna import Alconna, Subcommand, Args, Arpamar
 from Crypto.Cipher import AES
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from loguru import logger
 
 from app.api.doHttp import doHttpRequest
+from app.core.command_manager import CommandManager
 from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
-from app.util.tools import isstartswith
 
 
 class Module(Plugin):
-    entry = ['.wyy', '.网易云']
+    entry = 'wyy'
     brief_help = '网易云'
-    full_help = {
-        'rp': '网易云热评',
-        'qd': {
-            '立即进行一次签到': '',
-            '[phone]': '手机号',
-            '[password]': '登录密码'
-        },
-        'add': {
-            '添加自动签到': '',
-            '[phone]': '手机号',
-            '[password]': '登录密码'
-        },
-        'remove': {
-            '移出指定账号的自动签到': '',
-            '[phone]': '手机号'
-        },
-        'list': '列出您添加的自动签到账号',
-        '============\n为保证账号安全, 签到服务仅私发有效': ''
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
-        if not self.msg:
-            await self.print_help()
-            return
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('rp', help_text='网易云热评'),
+            Subcommand('qd', help_text='立即进行一次签到', args=Args['phone': int, 'password': str]),
+            Subcommand('add', help_text='添加自动签到', args=Args['phone': int, 'password': str]),
+            Subcommand('remove', help_text='移除指定账号的自动签到', args=Args['phone': int]),
+            Subcommand('list', help_text='列出你添加的自动签到账号')
+        ],
+        help_text='网易云: 为保证账号安全, 签到服务仅私发有效'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
+        subcommand = command.subcommands
+        other_args = command.other_args
+        if not subcommand:
+            return await self.print_help(alc.get_help())
         try:
-            if isstartswith(self.msg[0], 'qd'):
+            if subcommand.__contains__('qd'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
-                    return
-                assert len(self.msg) == 3 and self.msg[1].isdigit()
-                await Tasker(self.app).NetEase_process_event(self.friend.id, self.msg[1], self.msg[2])
-            elif isstartswith(self.msg[0], 'add'):
+                    return MessageChain.create([Plain('请私聊使用该命令!')])
+                await Tasker(self.app).NetEase_process_event(self.friend.id, other_args['phone'], other_args['password'])
+            elif subcommand.__contains__('add'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
-                    return
-                assert len(self.msg) == 3 and self.msg[1].isdigit()
+                    return MessageChain.create([Plain('请私聊使用该命令!')])
                 with MysqlDao() as db:
-                    if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [self.msg[1]]):
+                    if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [other_args['phone']]):
                         if not db.update(
                             'INSERT INTO Plugin_NetEase_Account (qid, phone, pwd) VALUES (%s, %s, %s)',
-                            [self.friend.id, self.msg[1], self.msg[2]]
+                            [self.friend.id, other_args['phone'], other_args['password']]
                         ):
                             raise Exception()
-                        self.resp = MessageChain.create([Plain('添加成功')])
+                        return MessageChain.create([Plain('添加成功')])
                     else:
-                        self.resp = MessageChain.create([Plain('该账号已存在！')])
-            elif isstartswith(self.msg[0], 'remove'):
+                        return MessageChain.create([Plain('该账号已存在！')])
+            elif subcommand.__contains__('remove'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
-                    return
-                assert len(self.msg) == 2 and self.msg[1].isdigit()
+                    return MessageChain.create([Plain('请私聊使用该命令!')])
                 with MysqlDao() as db:
-                    if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, self.msg[1]]):
-                        if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, self.msg[1]]):
-                            self.resp = MessageChain.create([Plain('移除成功！')])
+                    if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, other_args['phone']]):
+                        if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s', [self.friend.id, other_args['phone']]):
+                            return MessageChain.create([Plain('移除成功！')])
                     else:
-                        self.resp = MessageChain.create([Plain('该账号不存在！')])
-            elif isstartswith(self.msg[0], 'list'):
+                        return MessageChain.create([Plain('该账号不存在！')])
+            elif subcommand.__contains__('list'):
                 if not hasattr(self, 'friend'):
-                    self.resp = MessageChain.create([Plain('请私聊使用该命令!')])
-                    return
+                    return MessageChain.create([Plain('请私聊使用该命令!')])
                 with MysqlDao() as db:
                     res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
-                    self.resp = MessageChain.create([
-                        Plain('\n'.join([f'{phone[0]}' for phone in res]))
-                    ])
-            elif isstartswith(self.msg[0], 'rp'):
+                    return MessageChain.create([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
+            elif subcommand.__contains__('rp'):
                 req = json.loads(await doHttpRequest('https://api.muxiaoguo.cn/api/163reping', 'GET'))
                 ans = req['data']
-                self.resp = MessageChain.create([
+                return MessageChain.create([
                     Plain('歌曲：%s\r\n' % ans['songName']),
                     Plain('昵称：%s\r\n' % ans['nickname']),
                     Plain('评论：%s' % ans['content'])
                 ])
             else:
-                self.args_error()
-                return
-        except AssertionError as e:
-            print(e)
-            self.args_error()
+                return self.args_error()
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
 
 class Tasker(Scheduler):

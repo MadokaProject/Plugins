@@ -3,6 +3,7 @@ import json
 import os
 import random
 
+from arclet.alconna import Alconna, Subcommand, Arpamar
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image, Plain
@@ -11,12 +12,12 @@ from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 from prettytable import PrettyTable
 
+from app.core.command_manager import CommandManager
 from app.core.config import Config
 from app.entities.user import BotUser
 from app.plugin.base import Plugin, InitDB
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
-from app.util.tools import isstartswith
 
 bookid = {
     "CET4luan_1": {"name": "四级真题核心词", "id": "1"},
@@ -46,21 +47,24 @@ RUNNING = {}
 
 
 class Module(Plugin):
-    entry = ['.recite', '.背单词']
+    entry = '背单词'
     brief_help = '背单词'
-    full_help = {
-        '无参数': '开启一轮背单词',
-        '更新, update': '更新词库(仅主人可用)',
-        '排行, rank': '显示群内成员答题排行榜'
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('rank', help_text='显示群内成员答题排行榜'),
+            Subcommand('update', help_text='更新词库: 仅主人可用')
+        ],
+        help_text='开启一轮背单词'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
         if not hasattr(self, 'group'):
-            self.resp = MessageChain.create([
-                Plain('请在群聊内使用该命令!')
-            ])
-            return
-        if not self.msg:
+            return MessageChain.create([Plain('请在群聊内使用该命令!')])
+        subcommand = command.subcommands
+        if not subcommand:
             """开始背诵单词"""
             try:
                 @Waiter.create_using_function([GroupMessage])
@@ -157,25 +161,15 @@ class Module(Plugin):
                                     Plain(f"提示3\n这个单词的前半部分为\n{word_data[0][:half]}")]))
                             elif process == 4:
                                 del RUNNING[self.group.id]
-                                return await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain(f"本次答案为：{word_data[0]}\n答题已结束，请重新开启")
                                 ]))
+                                return
             except Exception as e:
                 logger.exception(e)
-                self.unkown_error()
-            return
-        if isstartswith(self.msg[0], ['更新', 'update']):
-            """更新题库"""
-            config = Config()
-            if self.member.id != int(config.MASTER_QQ):
-                self.not_admin()
-                return
-            await self.app.sendGroupMessage(self.group, MessageChain.create([
-                Plain('正在更新题库，所需时间可能较长，请耐心等待')
-            ]))
-            await asyncio.gather(update_english_test(self))
-
-        elif isstartswith(self.msg[0], ['排行', 'rank']):
+                return self.unkown_error()
+        if subcommand.__contains__('rank'):
+            """排行"""
             try:
                 with MysqlDao() as db:
                     res = db.query(
@@ -183,7 +177,7 @@ class Module(Plugin):
                     )
                     members = await self.app.getMemberList(self.group.id)
                     group_user = {item.id: item.name for item in members}
-                    self.resp = MessageChain.create([Plain('群内英语答题排行：\r\n')])
+                    resp = MessageChain.create([Plain('群内英语答题排行：\r\n')])
                     index = 1
                     msg = PrettyTable()
                     msg.field_names = ['序号', '群昵称', '答题数量']
@@ -194,14 +188,24 @@ class Module(Plugin):
                         index += 1
                     msg.align = 'r'
                     msg.align['群昵称'] = 'l'
-                    self.resp.extend(MessageChain.create([
+                    resp.extend(MessageChain.create([
                         Image(data_bytes=await create_image(msg.get_string()))
                     ]))
+                    return resp
             except Exception as e:
                 logger.exception(e)
-                self.unkown_error()
+                return self.unkown_error()
+        elif subcommand.__contains__('update'):
+            """更新题库"""
+            config = Config()
+            if self.member.id != int(config.MASTER_QQ):
+                return self.not_admin()
+            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                Plain('正在更新题库，所需时间可能较长，请耐心等待')
+            ]))
+            await asyncio.gather(update_english_test(self))
         else:
-            self.args_error()
+            return self.args_error()
 
 
 async def random_word(bookid):
@@ -265,10 +269,10 @@ async def update_english_test(self):
                             'INSERT INTO word_dict(word, pos, tran, bookId) VALUES(%s, %s, %s, %s)',
                             [data[0], data[1], data[2], data[3]]
                         )
-            self.resp = MessageChain.create([Plain('题库更新完成！')])
+            return MessageChain.create([Plain('题库更新完成！')])
         except Exception as e:
             logger.exception(e)
-            self.resp = MessageChain.create([Plain(f'题库更新异常: {e}')])
+            return MessageChain.create([Plain(f'题库更新异常: {e}')])
 
 
 class DB(InitDB):

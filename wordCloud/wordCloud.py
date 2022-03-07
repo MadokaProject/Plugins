@@ -1,12 +1,10 @@
-import asyncio
-import contextvars
-import functools
 import re
 from io import BytesIO
 from pathlib import Path
 
 import jieba.analyse
 import numpy
+from arclet.alconna import Alconna, Subcommand, Arpamar
 from PIL import Image as IMG
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Plain, Image
@@ -14,10 +12,11 @@ from loguru import logger
 from matplotlib import pyplot
 from wordcloud import WordCloud, ImageColorGenerator
 
+from app.core.command_manager import CommandManager
 from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.sendMessage import safeSendGroupMessage
-from app.util.tools import isstartswith, to_thread
+from app.util.tools import to_thread
 
 BASEPATH = Path(__file__).parent
 MASK = numpy.array(IMG.open(BASEPATH.joinpath("./wordCloud_res/wordcloud.jpg")))
@@ -29,66 +28,63 @@ RUNNING_LIST = []
 
 
 class Module(Plugin):
-    entry = ['.wordcloud', '.词云']
+    entry = '词云'
     brief_help = '词云'
-    full_help = {
-        '个人': '查看个人词云',
-        '本群': '查看本群词云'
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('个人', help_text='查看个人词云'),
+            Subcommand('本群', help_text='查看本群词云')
+        ],
+        help_text='词云'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
+        subcommand = command.subcommands
         global RUNNING, RUNNING_LIST
-        if not self.msg:
-            await self.print_help()
-            return
+        if not subcommand:
+            return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'group'):
-                self.resp = MessageChain.create([
-                    Plain('请在群组使用该命令！')
-                ])
-                return
-            if isstartswith(self.msg[0], ['个人', '本群'], full_match=1):
-                if RUNNING < 5:
-                    RUNNING += 1
-                    RUNNING_LIST.append(self.member.id)
-                    with MysqlDao() as db:
-                        if self.msg[0] == '个人':
-                            talk_list = db.query(
-                                'SELECT content FROM msg WHERE uid=%s and qid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
-                                [self.group.id, self.member.id]
-                            )
-                        else:
-                            talk_list = db.query(
-                                'SELECT content FROM msg WHERE uid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
-                                [self.group.id]
-                            )
-                        talk_list = [re.sub(r'[0-9]+', '', talk[0]).strip('@') for talk in talk_list if
-                                     talk[0] not in ['[图片]']]
-                    if len(talk_list) < 10:
-                        await safeSendGroupMessage(self.group, MessageChain.create([Plain("当前样本量较少，无法制作")]))
-                        RUNNING -= 1
-                        RUNNING_LIST.remove(self.member.id)
-                        return
-                    await safeSendGroupMessage(self.group, MessageChain.create(
-                        [At(self.member.id), Plain(f" 正在制作词云，一周内共 {len(talk_list)} 条记录")]
-                    ))
-                    words = await get_frequencies(talk_list)
-                    image = await to_thread(make_wordcloud, words)
-                    await safeSendGroupMessage(self.group, MessageChain.create([
-                        At(self.member.id), Plain(f" 已成功制作{self.msg[0]}词云"), Image(data_bytes=image)]
-                    ))
+                return MessageChain.create([Plain('请在群组使用该命令！')])
+            if RUNNING < 5:
+                RUNNING += 1
+                RUNNING_LIST.append(self.member.id)
+                with MysqlDao() as db:
+                    if subcommand.__contains__('个人'):
+                        talk_list = db.query(
+                            'SELECT content FROM msg WHERE uid=%s and qid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
+                            [self.group.id, self.member.id]
+                        )
+                    else:
+                        talk_list = db.query(
+                            'SELECT content FROM msg WHERE uid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
+                            [self.group.id]
+                        )
+                    talk_list = [re.sub(r'[0-9]+', '', talk[0]).strip('@') for talk in talk_list if
+                                 talk[0] not in ['[图片]']]
+                if len(talk_list) < 10:
+                    await safeSendGroupMessage(self.group, MessageChain.create([Plain("当前样本量较少，无法制作")]))
                     RUNNING -= 1
                     RUNNING_LIST.remove(self.member.id)
-                else:
-                    await safeSendGroupMessage(self.group, MessageChain.create([Plain("词云生成进程正忙，请稍后")]))
+                    return
+                await safeSendGroupMessage(self.group, MessageChain.create(
+                    [At(self.member.id), Plain(f" 正在制作词云，一周内共 {len(talk_list)} 条记录")]
+                ))
+                words = await get_frequencies(talk_list)
+                image = await to_thread(make_wordcloud, words)
+                await safeSendGroupMessage(self.group, MessageChain.create([
+                    At(self.member.id), Plain(f" 已成功制作{self.msg[0]}词云"), Image(data_bytes=image)]
+                ))
+                RUNNING -= 1
+                RUNNING_LIST.remove(self.member.id)
             else:
-                self.args_error()
-        except AssertionError as e:
-            print(e)
-            self.args_error()
+                await safeSendGroupMessage(self.group, MessageChain.create([Plain("词云生成进程正忙，请稍后")]))
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
 
 async def get_frequencies(msg_list):

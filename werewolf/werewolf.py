@@ -3,6 +3,7 @@ import random
 import time
 from collections import Counter
 
+from arclet.alconna import Alconna, Subcommand, Arpamar
 from graia.ariadne.event.message import GroupMessage, FriendMessage
 from graia.ariadne.exception import UnknownTarget
 from graia.ariadne.message.chain import MessageChain
@@ -11,6 +12,7 @@ from graia.ariadne.model import Friend, Group, Member, MemberPerm
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
+from app.core.command_manager import CommandManager
 from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import BotUser
@@ -21,14 +23,9 @@ positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'gu
 
 
 class Module(Plugin):
-    entry = ['.wolf', '.狼人杀']
+    entry = 'wolf'
     brief_help = '狼人杀'
-    full_help = {
-        '创建, create': '创建一局狼人杀游戏',
-        '加入, join': '加入狼人杀游戏',
-        '退出, exit': '退出狼人杀游戏',
-        '强制结束, stop': '强制结束狼人杀游戏'
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
     async def judge_playing(self):
         """判断用户是否正在游戏中"""
@@ -84,17 +81,25 @@ class Module(Plugin):
             add_user_position(GROUP_GAME_PROCESS[self.group.id]['player'][i], position=positions[i], survive=1,
                               ability=ability)
 
-    async def process(self):
-        if not self.msg:
-            await self.print_help()
-            return
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('create', help_text='创建一局狼人杀游戏'),
+            Subcommand('join', help_text='加入狼人杀游戏'),
+            Subcommand('exit', help_text='退出狼人杀游戏'),
+            Subcommand('stop', help_text='强制结束狼人杀游戏')
+        ],
+        help_text='狼人杀'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
+        subcommand = command.subcommands
+        if not subcommand:
+            return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'group'):
-                self.resp = MessageChain.create([
-                    Plain('独乐乐不如众乐乐，请在群聊内使用该命令跟大家一起玩吧!')
-                ])
-                return
-            if isstartswith(self.msg[0], ['创建', 'create']):
+                return MessageChain.create([Plain('独乐乐不如众乐乐，请在群聊内使用该命令跟大家一起玩吧!')])
+            if subcommand.__contains__('create'):
                 """创建狼人杀游戏房间"""
                 # 检查机器人是否为管理
                 if self.group.accountPerm == MemberPerm.Member:
@@ -295,7 +300,7 @@ class Module(Plugin):
 
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
-            elif isstartswith(self.msg[0], ['加入', 'join']):
+            elif subcommand.__contains__('join'):
                 """加入狼人杀游戏房间"""
                 # 检查有无狼人杀房间
                 if self.group.id not in GROUP_RUNING_LIST:
@@ -330,7 +335,7 @@ class Module(Plugin):
                     At(self.member.id),
                     Plain('加入成功')
                 ]))
-            elif isstartswith(self.msg[0], ['退出', 'exit']):
+            elif subcommand.__contains__('exit'):
                 """退出狼人杀房间"""
                 # 判断有无狼人杀房间
                 if self.group.id not in GROUP_RUNING_LIST:
@@ -352,7 +357,7 @@ class Module(Plugin):
                     At(self.member.id),
                     Plain('退出成功')
                 ]))
-            elif isstartswith(self.msg[0], ['结束', 'stop']):
+            elif subcommand.__contains__('stop'):
                 if self.group.id not in GROUP_RUNING_LIST:  # 检查该群是否在游戏中
                     await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('该群不在游戏中，无法使用该命令！')]))
                     return
@@ -368,15 +373,10 @@ class Module(Plugin):
                     if group_id['position'][player]['position'] == 'wolf':
                         group_id['position'][player]['survive'] = 0
                 await self.app.sendGroupMessage(self.group, MessageChain.create([Plain('已执行强制结束游戏，请等待当前流程结束')]))
-            else:
-                self.args_error()
-                return
-        except AssertionError as e:
-            print(e)
-            self.args_error()
+            return self.args_error()
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
     async def start_game(self):
         days = 1  # 初始化天数

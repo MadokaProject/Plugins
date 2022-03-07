@@ -1,101 +1,80 @@
 import requests
+from arclet.alconna import Alconna, Args, Subcommand, Arpamar, AnyUrl, Email
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from loguru import logger
 
+from app.core.command_manager import CommandManager
 from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
-from app.util.tools import isstartswith
 
 requests.packages.urllib3.disable_warnings()
 
 
 class Module(Plugin):
-    entry = ['.sspanel', '.机场签到']
+    entry = 'sspanel'
     brief_help = '机场签到'
-    full_help = {
-        'qd': {
-            '立即进行一次签到': '',
-            '[host]': '签到地址',
-            '[email]': '登录邮箱',
-            '[password]': '登录密码'
-        },
-        'add': {
-            '添加签到账号': '',
-            '[host]': '签到地址',
-            '[email]': '登录邮箱',
-            '[password]': '登录密码'
-        },
-        'remove': {
-            '删除签到账号': '',
-            '[host]': '签到地址',
-            '[email]': '登录邮箱'
-        },
-        'list': '列出您添加的签到账号',
-        '============\n为保证账号安全, 该服务仅私发有效': ''
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
-        if not self.msg:
-            await self.print_help()
-            return
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('qd', help_text='立即进行一次签到', args=Args['host': AnyUrl, 'email' :Email, 'password': str]),
+            Subcommand('add', help_text='添加/修改签到账号', args=Args['host': AnyUrl, 'email' :Email, 'password': str]),
+            Subcommand('remove', help_text='删除签到账号', args=Args['host': AnyUrl, 'email' :Email]),
+            Subcommand('list', help_text='列出你添加的签到账号')
+        ],
+        help_text='机场签到: 为保证账号安全, 该服务仅私发有效'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
+        subcommand = command.subcommands
+        other_args = command.other_args
+        if not subcommand:
+            return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'friend'):
-                self.resp = MessageChain.create([
-                    Plain('请私聊使用该命令!')
-                ])
-                return
-            if isstartswith(self.msg[0], 'qd'):
-                assert len(self.msg) == 4
-                account = {
-                    0: {
-                        'web': self.msg[1],
-                        'user': self.msg[2],
-                        'pwd': self.msg[3]
-                    }
-                }
+                return MessageChain.create([Plain('请私聊使用该命令!')])
+            if subcommand.__contains__('qd'):
+                account = {0: {
+                    'web': other_args['host'],
+                    'user': other_args['email'],
+                    'pwd': other_args['password']
+                }}
                 msg = await Tasker(self.app).checkin(account)
-                self.resp = MessageChain.create([
+                return MessageChain.create([
                     Plain('机场签到完成\r\n'),
                     Plain(msg)
                 ])
-            elif isstartswith(self.msg[0], 'add'):
-                assert len(self.msg) == 4
+            elif subcommand.__contains__('add'):
                 with MysqlDao() as db:
-                    self.resp = MessageChain.create([
+                    return MessageChain.create([
                         Plain('添加/修改成功！' if db.update(
                             'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
-                            [self.friend.id, self.msg[1], self.msg[2], self.msg[3]]
+                            [self.friend.id, other_args['host'], other_args['email'], other_args['password']]
                         ) else '添加/修改失败！')
                     ])
-            elif isstartswith(self.msg[0], 'remove'):
-                assert len(self.msg) == 3
+            elif subcommand.__contains__('remove'):
                 with MysqlDao() as db:
-                    self.resp = MessageChain.create([
+                    return MessageChain.create([
                         Plain('删除成功！' if db.update(
                             'DELETE FROM plugin_sspanel_account WHERE qid=%s and web=%s and user=%s',
-                            [self.friend.id, self.msg[1], self.msg[2]]
+                            [self.friend.id, other_args['host'], other_args['email']]
                         ) else '删除失败！')
                     ])
-            elif isstartswith(self.msg[0], 'list'):
+            elif subcommand.__contains__('list'):
                 with MysqlDao() as db:
                     res = db.query(
                         'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',
                         [self.friend.id]
                     )
-                    self.resp = MessageChain.create([
+                    return MessageChain.create([
                         Plain('\n'.join(f'{index}: {web}\t{user}' for index, (web, user) in enumerate(res)))
                     ])
-            else:
-                self.args_error()
-                return
-        except AssertionError as e:
-            print(e)
-            self.args_error()
-
+            return self.args_error()
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
 
 class Tasker(Scheduler):

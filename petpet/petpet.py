@@ -2,39 +2,35 @@ from io import BytesIO
 from pathlib import Path
 
 import httpx
-from PIL import Image as IMG
-from PIL import ImageOps
+from arclet.alconna import Alconna, Args, Arpamar
+from PIL import Image as IMG, ImageOps
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image
 from loguru import logger
 
+from app.core.command_manager import CommandManager
 from app.plugin.base import Plugin
 
 FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
 
 
 class Module(Plugin):
-    entry = ['.pet', '.摸']
+    entry = 'pet'
     brief_help = '摸摸'
-    full_help = {
-        '[@qq]': '@群成员'
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
-        if not self.msg:
-            await self.print_help()
-            return
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        main_args=Args['qq': At],
+        help_text='摸摸'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
         try:
-            if self.message.has(At):
-                self.resp = MessageChain.create([
-                    Image(data_bytes=await petpet(self.message.getFirst(At).target))
-                ])
-            else:
-                self.args_error()
-                return
+            return MessageChain.create([Image(data_bytes=await petpet(command.main_args['qq'].target))])
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
 
 frame_spec = [

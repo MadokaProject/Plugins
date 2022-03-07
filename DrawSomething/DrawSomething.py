@@ -2,6 +2,7 @@ import asyncio
 import secrets
 import time
 
+from arclet.alconna import Alconna, Subcommand, Arpamar
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.exception import UnknownTarget
 from graia.ariadne.message.chain import MessageChain
@@ -10,11 +11,11 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
+from app.core.command_manager import CommandManager
 from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import BotUser
 from app.plugin.base import Plugin
-from app.util.tools import isstartswith
 
 WORD = {
     "word": [
@@ -747,20 +748,26 @@ WORD = {
 
 
 class Module(Plugin):
-    entry = ['.ds', '.你画我猜']
+    entry = 'ds'
     brief_help = '你画我猜'
-    full_help = {
-        '开始游戏, start': '开始一局你画我猜游戏',
-        'status': '查看你画我猜状态'
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
-        if not self.msg:
-            await self.print_help()
-            return
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('start', help_text='开始一局你画我猜游戏'),
+            Subcommand('status', help_text='查看你画我猜状态')
+        ],
+        help_text='你画我猜'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
+        subcommand = command.subcommands
+        if not subcommand:
+            return await self.print_help(alc.get_help())
         try:
             config = Config()
-            if isstartswith(self.msg[0], ['开始游戏', 'start']):
+            if subcommand.__contains__('start'):
                 # 判断用户是否正在游戏中
                 if self.member.id in MEMBER_RUNING_LIST:
                     return
@@ -930,7 +937,7 @@ class Module(Plugin):
 
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
-            elif isstartswith(self.msg[0], 'status'):
+            elif subcommand.__contains__('status'):
                 if self.friend.id == int(config.MASTER_QQ):
                     runlist_len = len(GROUP_RUNING_LIST)
                     runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
@@ -943,12 +950,7 @@ class Module(Plugin):
                         await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
                             Plain(f"当前没有正在运行你画我猜的群")
                         ]))
-            else:
-                self.args_error()
-                return
-        except AssertionError as e:
-            print(e)
-            self.args_error()
+            return self.args_error()
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()

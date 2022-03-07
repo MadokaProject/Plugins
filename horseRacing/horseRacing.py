@@ -3,6 +3,7 @@ import random
 from io import BytesIO
 from pathlib import Path
 
+from arclet.alconna import Alconna, Subcommand, Arpamar
 from PIL import Image as IMG, ImageDraw, ImageFont
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
@@ -11,31 +12,32 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
+from app.core.command_manager import CommandManager
 from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import BotUser
 from app.plugin.base import Plugin
 from app.util.sendMessage import safeSendGroupMessage
-from app.util.tools import isstartswith, to_thread
+from app.util.tools import to_thread
 
 FONT_PATH = Path("./app/resource/font")
 font24 = ImageFont.truetype(str(FONT_PATH.joinpath("sarasa-mono-sc-semibold.ttf")), 24)
 
 
 class Module(Plugin):
-    entry = ['.hr', '.赛马']
+    entry = 'hr'
     brief_help = '赛马小游戏'
-    full_help = {
-        '开始游戏, start': '开始一局赛马小游戏',
-        '创建房间后可执行的命令:': {
-            '': '',
-            '提前开始': '成员不足6人时, 创建者可强制开始游戏',
-            '加入赛马': '加入赛马小游戏',
-            '退出赛马': '退出或解散房间'
-        }
-    }
+    manager: CommandManager = CommandManager.get_command_instance()
 
-    async def process(self):
+    @manager(Alconna(
+        headers=manager.headers,
+        command=entry,
+        options=[
+            Subcommand('start', help_text='开始一局赛马小游戏')
+        ],
+        help_text='赛马小游戏'
+    ))
+    async def process(self, command: Arpamar, alc: Alconna):
         config = Config()
 
         @Waiter.create_using_function([GroupMessage])
@@ -140,14 +142,12 @@ class Module(Plugin):
                             ),
                         )
 
-        if not self.msg:
-            await self.print_help()
-            return
+        if not command.subcommands:
+            return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'group'):
-                self.resp = MessageChain.create([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
-                return
-            if isstartswith(self.msg[0], ['开始游戏', 'start']):
+                return MessageChain.create([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
+            if command.subcommands.__contains__('start'):
                 if self.group.id in GROUP_RUNING_LIST:
                     if GROUP_GAME_PROCESS[self.group.id]["status"] != "running":
                         return await safeSendGroupMessage(
@@ -268,13 +268,13 @@ class Module(Plugin):
                 GROUP_RUNING_LIST.remove(self.group.id)
                 del GROUP_GAME_PROCESS[self.group.id]
             else:
-                self.args_error()
+                return self.args_error()
         except AssertionError as e:
-            print(e)
-            self.args_error()
+            logger.exception(e)
+            return self.args_error()
         except Exception as e:
             logger.exception(e)
-            self.unkown_error()
+            return self.unkown_error()
 
 
 def draw_game(data):
