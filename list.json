@@ -96,5 +96,14 @@
         "version": "0.0.2",
         "resource": [],
         "pypi": true
+    },
+    "chaoxing": {
+        "name": "学习通",
+        "author": "Colsrch",
+        "version": "0.0.1",
+        "resource": [
+            "sign.py"
+        ],
+        "pypi": true
     }
 }
