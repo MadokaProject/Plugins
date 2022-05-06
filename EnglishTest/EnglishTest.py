@@ -12,9 +12,9 @@ from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 from prettytable import PrettyTable
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.core.config import Config
-from app.entities.user import BotUser
+from app.entities.game import BotGame
 from app.plugin.base import Plugin, InitDB
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
@@ -49,9 +49,9 @@ RUNNING = {}
 class Module(Plugin):
     entry = '背单词'
     brief_help = '背单词'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[
@@ -63,8 +63,7 @@ class Module(Plugin):
     async def process(self, command: Arpamar, alc: Alconna):
         if not hasattr(self, 'group'):
             return MessageChain.create([Plain('请在群聊内使用该命令!')])
-        subcommand = command.subcommands
-        if not subcommand:
+        if not command.subcommands:
             """开始背诵单词"""
             try:
                 @Waiter.create_using_function([GroupMessage])
@@ -133,7 +132,7 @@ class Module(Plugin):
                         try:
                             answer_qq = await asyncio.wait_for(self.inc.wait(waiter), timeout=15)
                             if answer_qq:
-                                await BotUser(str(answer_qq)).update_english_answer(1)
+                                await BotGame(str(answer_qq)).update_english_answer(1)
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain("恭喜 "),
                                     At(answer_qq),
@@ -168,12 +167,12 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        if subcommand.__contains__('rank'):
+        if command.get('rank'):
             """排行"""
             try:
                 with MysqlDao() as db:
                     res = db.query(
-                        "SELECT uid, english_answer FROM user ORDER BY english_answer DESC"
+                        "SELECT qid, english_answer FROM game ORDER BY english_answer DESC"
                     )
                     members = await self.app.getMemberList(self.group.id)
                     group_user = {item.id: item.name for item in members}
@@ -195,7 +194,7 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        elif subcommand.__contains__('update'):
+        elif command.get('update'):
             """更新题库"""
             config = Config()
             if self.member.id != int(config.MASTER_QQ):

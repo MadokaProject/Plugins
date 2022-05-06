@@ -11,10 +11,10 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.core.config import Config
 from app.core.settings import *
-from app.entities.user import BotUser
+from app.entities.game import BotGame
 from app.plugin.base import Plugin
 
 WORD = {
@@ -750,9 +750,9 @@ WORD = {
 class Module(Plugin):
     entry = 'ds'
     brief_help = '你画我猜'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[
@@ -762,12 +762,11 @@ class Module(Plugin):
         help_text='你画我猜'
     ))
     async def process(self, command: Arpamar, alc: Alconna):
-        subcommand = command.subcommands
-        if not subcommand:
+        if not command.subcommands:
             return await self.print_help(alc.get_help())
         try:
             config = Config()
-            if subcommand.__contains__('start'):
+            if command.get('start'):
                 # 判断用户是否正在游戏中
                 if self.member.id in MEMBER_RUNING_LIST:
                     return
@@ -868,7 +867,7 @@ class Module(Plugin):
                                 "owner": self.member.id,
                                 "player": {}
                             }
-                            if await BotUser(str(self.member.id)).get_points() < 4:
+                            if await BotGame(str(self.member.id)).get_coins() < 4:
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
@@ -876,7 +875,7 @@ class Module(Plugin):
                                     Plain(f" 你的{config.COIN_NAME}不足，无法开始游戏")]))
                                 return
                             else:
-                                await BotUser(str(self.member.id)).update_point(-4)
+                                await BotGame(str(self.member.id)).update_coin(-4)
                                 question_len = len(question)
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain(f"本次题目为 {question_len} 个字，请等待 "),
@@ -894,8 +893,8 @@ class Module(Plugin):
                                 result = await asyncio.wait_for(self.inc.wait(start_game), timeout=180)
                                 if result:
                                     owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    await BotUser(owner).update_point(2)
-                                    await BotUser(str(result[0].id)).update_point(1)
+                                    await BotGame(owner).update_coin(2)
+                                    await BotGame(str(result[0].id)).update_coin(1)
                                     GROUP_RUNING_LIST.remove(self.group.id)
                                     del GROUP_GAME_PROCESS[self.group.id]
                                     await self.app.sendGroupMessage(self.group.id, MessageChain.create([
@@ -905,7 +904,7 @@ class Module(Plugin):
                                     ]), quote=result[1])
                                 else:
                                     owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    await BotUser(owner).update_point(1)
+                                    await BotGame(owner).update_coin(1)
                                     GROUP_RUNING_LIST.remove(self.group.id)
                                     del GROUP_GAME_PROCESS[self.group.id]
                                     await self.app.sendGroupMessage(self.group, MessageChain.create([
@@ -914,7 +913,7 @@ class Module(Plugin):
                             except asyncio.TimeoutError:
                                 owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
                                 question = GROUP_GAME_PROCESS[self.group.id]["question"]
-                                await BotUser(owner).update_point(1)
+                                await BotGame(owner).update_coin(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
@@ -937,7 +936,7 @@ class Module(Plugin):
 
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
-            elif subcommand.__contains__('status'):
+            elif command.get('status'):
                 if self.friend.id == int(config.MASTER_QQ):
                     runlist_len = len(GROUP_RUNING_LIST)
                     runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))

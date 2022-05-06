@@ -12,10 +12,10 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.core.config import Config
 from app.core.settings import *
-from app.entities.user import BotUser
+from app.entities.game import BotGame
 from app.plugin.base import Plugin
 from app.util.sendMessage import safeSendGroupMessage
 from app.util.tools import to_thread
@@ -27,9 +27,9 @@ font24 = ImageFont.truetype(str(FONT_PATH.joinpath("sarasa-mono-sc-semibold.ttf"
 class Module(Plugin):
     entry = 'hr'
     brief_help = '赛马小游戏'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[
@@ -53,7 +53,7 @@ class Module(Plugin):
                             self.group, MessageChain.create("你已经参与了本轮游戏，请不要重复加入")
                         )
                     else:
-                        if await BotUser(waiter1_member.id).reduce_gold(5):
+                        if await BotGame(waiter1_member.id).reduce_coin(5):
                             GROUP_GAME_PROCESS[self.group.id]["members"].append(
                                 waiter1_member.id
                             )
@@ -86,7 +86,7 @@ class Module(Plugin):
                     player_count = len(player_list)
                     if waiter1_member.id == self.member.id:
                         for player in GROUP_GAME_PROCESS[self.group.id]["members"]:
-                            await BotUser(player).update_point(5)
+                            await BotGame(player).update_coin(5)
                         MEMBER_RUNING_LIST.remove(self.member.id)
                         GROUP_RUNING_LIST.remove(self.group.id)
                         del GROUP_GAME_PROCESS[self.group.id]
@@ -147,7 +147,7 @@ class Module(Plugin):
         try:
             if not hasattr(self, 'group'):
                 return MessageChain.create([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
-            if command.subcommands.__contains__('start'):
+            if command.get('start'):
                 if self.group.id in GROUP_RUNING_LIST:
                     if GROUP_GAME_PROCESS[self.group.id]["status"] != "running":
                         return await safeSendGroupMessage(
@@ -166,7 +166,7 @@ class Module(Plugin):
                         self.group, MessageChain.create(" 你已经参与了其他群的游戏，请等待游戏结束")
                     )
 
-                if await BotUser(self.member.id).reduce_gold(5):
+                if await BotGame(self.member.id).reduce_coin(5):
                     MEMBER_RUNING_LIST.append(self.member.id)
                     GROUP_RUNING_LIST.append(self.group.id)
                     GROUP_GAME_PROCESS[self.group.id] = {
@@ -190,7 +190,7 @@ class Module(Plugin):
 
                 except asyncio.TimeoutError:
                     for player in GROUP_GAME_PROCESS[self.group.id]["members"]:
-                        await BotUser(player).update_point(5)
+                        await BotGame(player).update_coin(5)
                     MEMBER_RUNING_LIST.remove(self.member.id)
                     GROUP_RUNING_LIST.remove(self.group.id)
                     del GROUP_GAME_PROCESS[self.group.id]
@@ -263,7 +263,7 @@ class Module(Plugin):
                         At(game_data["winer"]),
                         Plain(f"已获得 {gold_count} {config.COIN_NAME}")
                     ]))
-                await BotUser(game_data["winer"]).update_point(gold_count)
+                await BotGame(game_data["winer"]).update_coin(gold_count)
                 MEMBER_RUNING_LIST.remove(self.member.id)
                 GROUP_RUNING_LIST.remove(self.group.id)
                 del GROUP_GAME_PROCESS[self.group.id]

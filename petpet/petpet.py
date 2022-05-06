@@ -8,7 +8,7 @@ from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Image
 from loguru import logger
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.plugin.base import Plugin
 
 FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
@@ -17,9 +17,9 @@ FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
 class Module(Plugin):
     entry = 'pet'
     brief_help = '摸摸'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         main_args=Args['qq': At],
@@ -27,7 +27,7 @@ class Module(Plugin):
     ))
     async def process(self, command: Arpamar, alc: Alconna):
         try:
-            return MessageChain.create([Image(data_bytes=await petpet(command.main_args['qq'].target))])
+            return MessageChain.create([Image(data_bytes=await petpet(command.get('qq').target))])
         except Exception as e:
             logger.exception(e)
             return self.unkown_error()

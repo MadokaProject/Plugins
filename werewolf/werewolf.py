@@ -12,7 +12,7 @@ from graia.ariadne.model import Friend, Group, Member, MemberPerm
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.core.config import Config
 from app.core.settings import *
 from app.entities.user import BotUser
@@ -25,7 +25,7 @@ positions_info = {'wolf': '狼人', 'vil': '村民', 'prophet': '预言家', 'gu
 class Module(Plugin):
     entry = 'wolf'
     brief_help = '狼人杀'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
     async def judge_playing(self):
         """判断用户是否正在游戏中"""
@@ -81,7 +81,7 @@ class Module(Plugin):
             add_user_position(GROUP_GAME_PROCESS[self.group.id]['player'][i], position=positions[i], survive=1,
                               ability=ability)
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[

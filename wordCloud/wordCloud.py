@@ -12,7 +12,7 @@ from loguru import logger
 from matplotlib import pyplot
 from wordcloud import WordCloud, ImageColorGenerator
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.sendMessage import safeSendGroupMessage
@@ -30,9 +30,9 @@ RUNNING_LIST = []
 class Module(Plugin):
     entry = '词云'
     brief_help = '词云'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[
@@ -42,9 +42,8 @@ class Module(Plugin):
         help_text='词云'
     ))
     async def process(self, command: Arpamar, alc: Alconna):
-        subcommand = command.subcommands
         global RUNNING, RUNNING_LIST
-        if not subcommand:
+        if not command.subcommands:
             return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'group'):
@@ -53,7 +52,7 @@ class Module(Plugin):
                 RUNNING += 1
                 RUNNING_LIST.append(self.member.id)
                 with MysqlDao() as db:
-                    if subcommand.__contains__('个人'):
+                    if command.get('个人'):
                         talk_list = db.query(
                             'SELECT content FROM msg WHERE uid=%s and qid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
                             [self.group.id, self.member.id]

@@ -10,7 +10,7 @@ from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 from prettytable import PrettyTable
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
@@ -20,9 +20,9 @@ from .chaoxing_res.sign import AutoSign
 class Module(Plugin):
     entry = 'xxt'
     brief_help = '学习通'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[

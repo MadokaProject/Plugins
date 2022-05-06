@@ -1,10 +1,10 @@
 import requests
-from arclet.alconna import Alconna, Args, Subcommand, Arpamar, AnyUrl, Email
+from arclet.alconna import Alconna, Args, Subcommand, Arpamar
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import Plain
 from loguru import logger
 
-from app.core.command_manager import CommandManager
+from app.core.commander import CommandDelegateManager
 from app.plugin.base import Plugin, Scheduler, InitDB
 from app.util.dao import MysqlDao
 
@@ -14,55 +14,54 @@ requests.packages.urllib3.disable_warnings()
 class Module(Plugin):
     entry = 'sspanel'
     brief_help = '机场签到'
-    manager: CommandManager = CommandManager.get_command_instance()
+    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager(Alconna(
+    @manager.register(Alconna(
         headers=manager.headers,
         command=entry,
         options=[
-            Subcommand('qd', help_text='立即进行一次签到', args=Args['host': AnyUrl, 'email' :Email, 'password': str]),
-            Subcommand('add', help_text='添加/修改签到账号', args=Args['host': AnyUrl, 'email' :Email, 'password': str]),
-            Subcommand('remove', help_text='删除签到账号', args=Args['host': AnyUrl, 'email' :Email]),
+            Subcommand('qd', help_text='立即进行一次签到', args=Args['host': 'url', 'email' : 'email', 'password': str]),
+            Subcommand('add', help_text='添加/修改签到账号', args=Args['host': 'url', 'email' : 'email', 'password': str]),
+            Subcommand('remove', help_text='删除签到账号', args=Args['host': 'url', 'email' : 'email']),
             Subcommand('list', help_text='列出你添加的签到账号')
         ],
         help_text='机场签到: 为保证账号安全, 该服务仅私发有效'
     ))
     async def process(self, command: Arpamar, alc: Alconna):
         subcommand = command.subcommands
-        other_args = command.other_args
         if not subcommand:
             return await self.print_help(alc.get_help())
         try:
             if not hasattr(self, 'friend'):
                 return MessageChain.create([Plain('请私聊使用该命令!')])
-            if subcommand.__contains__('qd'):
+            if qd := subcommand.get('qd'):
                 account = {0: {
-                    'web': other_args['host'],
-                    'user': other_args['email'],
-                    'pwd': other_args['password']
+                    'web': qd['host'],
+                    'user': qd['email'],
+                    'pwd': qd['password']
                 }}
                 msg = await Tasker(self.app).checkin(account)
                 return MessageChain.create([
                     Plain('机场签到完成\r\n'),
                     Plain(msg)
                 ])
-            elif subcommand.__contains__('add'):
+            elif add := subcommand.get('add'):
                 with MysqlDao() as db:
                     return MessageChain.create([
                         Plain('添加/修改成功！' if db.update(
                             'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
-                            [self.friend.id, other_args['host'], other_args['email'], other_args['password']]
+                            [self.friend.id,add['host'], add['email'], add['password']]
                         ) else '添加/修改失败！')
                     ])
-            elif subcommand.__contains__('remove'):
+            elif remove := subcommand.get('remove'):
                 with MysqlDao() as db:
                     return MessageChain.create([
                         Plain('删除成功！' if db.update(
                             'DELETE FROM plugin_sspanel_account WHERE qid=%s and web=%s and user=%s',
-                            [self.friend.id, other_args['host'], other_args['email']]
+                            [self.friend.id, remove['host'], remove['email']]
                         ) else '删除失败！')
                     ])
-            elif subcommand.__contains__('list'):
+            elif command.get('list'):
                 with MysqlDao() as db:
                     res = db.query(
                         'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',
