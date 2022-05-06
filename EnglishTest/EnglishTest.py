@@ -167,7 +167,7 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        if command.get('rank'):
+        if command.has('rank'):
             """排行"""
             try:
                 with MysqlDao() as db:
@@ -194,7 +194,7 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        elif command.get('update'):
+        elif command.has('update'):
             """更新题库"""
             config = Config()
             if self.member.id != int(config.MASTER_QQ):

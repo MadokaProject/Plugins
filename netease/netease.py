@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import hashlib
 import json
@@ -65,20 +64,15 @@ class Module(Plugin):
                             return MessageChain.create([Plain('移除成功！')])
                     else:
                         return MessageChain.create([Plain('该账号不存在！')])
-            elif command.get('list'):
+            elif command.has('list'):
                 if not hasattr(self, 'friend'):
                     return MessageChain.create([Plain('请私聊使用该命令!')])
                 with MysqlDao() as db:
                     res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
                     return MessageChain.create([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
-            elif command.get('rp'):
-                req = json.loads(await doHttpRequest('https://api.muxiaoguo.cn/api/163reping', 'GET'))
-                ans = req['data']
-                return MessageChain.create([
-                    Plain('歌曲：%s\r\n' % ans['songName']),
-                    Plain('昵称：%s\r\n' % ans['nickname']),
-                    Plain('评论：%s' % ans['content'])
-                ])
+            elif command.has('rp'):
+                req = await doHttpRequest('https://v.api.aa1.cn/api/api-wenan-wangyiyunreping/index.php?aa1=text', 'GET')
+                return MessageChain.create(req.strip('<p>').strip('</p>'))
             else:
                 return self.args_error()
         except Exception as e:
@@ -239,9 +233,3 @@ class DB(InitDB):
                     phone char(11) not null comment '登录手机', \
                     pwd char(20) not null comment '登录密码')"
             )
-
-
-if __name__ == '__main__':
-    a = Module(MessageChain.create([Plain('.wyy rp')]))
-    asyncio.run(a.get_resp())
-    print(a.resp)

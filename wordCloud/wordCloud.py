@@ -52,7 +52,7 @@ class Module(Plugin):
                 RUNNING += 1
                 RUNNING_LIST.append(self.member.id)
                 with MysqlDao() as db:
-                    if command.get('个人'):
+                    if command.has('个人'):
                         talk_list = db.query(
                             'SELECT content FROM msg WHERE uid=%s and qid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
                             [self.group.id, self.member.id]

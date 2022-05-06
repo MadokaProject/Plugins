@@ -147,7 +147,7 @@ class Module(Plugin):
         try:
             if not hasattr(self, 'group'):
                 return MessageChain.create([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
-            if command.get('start'):
+            if command.has('start'):
                 if self.group.id in GROUP_RUNING_LIST:
                     if GROUP_GAME_PROCESS[self.group.id]["status"] != "running":
                         return await safeSendGroupMessage(
