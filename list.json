@@ -2,7 +2,7 @@
     "EnglishTest": {
         "name": "背单词",
         "author": "MadokaProject",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "resource": [
             "worddict/BEC_2.json",
             "worddict/ChuZhongluan_2.json",

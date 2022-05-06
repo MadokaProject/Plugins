@@ -45,6 +45,27 @@ Process = [1, 2, 3, 4]
 
 RUNNING = {}
 
+# 答对奖励（包含连续答对）
+reward = {
+    1: 2,
+    2: 3,
+    3: 5,
+    4: 8,
+    5: 12,
+    6: 17,
+    7: 23,
+    8: 30,
+    9: 39
+}
+# 答错惩罚（包含连续答错）
+punishment = {
+    1: -1,
+    2: -2,
+    3: -4,
+    4: -7,
+    5: -11
+}
+
 
 class Module(Plugin):
     entry = '背单词'
@@ -55,8 +76,8 @@ class Module(Plugin):
         headers=manager.headers,
         command=entry,
         options=[
-            Subcommand('rank', help_text='显示群内成员答题排行榜'),
-            Subcommand('update', help_text='更新词库: 仅主人可用')
+            Subcommand('排行', help_text='显示群内成员答题排行榜'),
+            Subcommand('更新', help_text='更新词库: 仅主人可用')
         ],
         help_text='开启一轮背单词'
     ))
@@ -88,8 +109,28 @@ class Module(Plugin):
                         waiter_saying = waiter_message.asDisplay()
                         if waiter_saying == "取消":
                             return False
-                        elif waiter_saying == RUNNING[self.group.id]:
-                            return waiter_member.id
+                        elif waiter_saying[0] == '#':
+                            _user = waiter_member.id
+                            if waiter_saying.strip('#') == RUNNING[self.group.id]:
+                                if _user in answer_record and answer_record[_user][0]:
+                                    answer_record[_user][1] += 1
+                                else:
+                                    answer_record[_user] = [True, 1]
+                                return _user
+                            else:
+                                if _user in answer_record and not answer_record[_user][0]:
+                                    answer_record[_user][1] += 1
+                                else:
+                                    answer_record[_user] = [False, 1]
+                                await BotGame(_user).update_coin(punishment.get(answer_record[_user][1], -15))
+                                if answer_record[_user][1] == 1:
+                                    _msg = '你答错了哦，'
+                                else:
+                                    _msg = f'你连续答错了{answer_record[_user][1]}题了哦，'
+                                _msg += f'惩罚你{punishment.get(answer_record[_user][1], -15)}金币'
+                                await self.app.sendGroupMessage(waiter_group, MessageChain.create([
+                                    At(_user), Plain(_msg)
+                                ]))
 
                 if self.group.id in RUNNING:
                     return
@@ -111,6 +152,8 @@ class Module(Plugin):
 
                 await self.app.sendGroupMessage(self.group, MessageChain.create([Plain("已开启本次答题，可随时发送取消终止进程")]))
 
+                answer_record = {}  # 答题记录，用于奖励
+
                 while True:
                     word_data = await random_word(bookid)
                     RUNNING[self.group.id] = word_data[0]
@@ -126,17 +169,25 @@ class Module(Plugin):
                         tran_num += 1
                     await self.app.sendGroupMessage(self.group, MessageChain.create([
                         Plain("本回合题目：\n"),
-                        Plain("\n".join(wordinfo))
+                        Plain("\n".join(wordinfo)),
+                        Plain("\n答题请输入 # 开头")
                     ]))
                     for process in Process:
                         try:
                             answer_qq = await asyncio.wait_for(self.inc.wait(waiter), timeout=15)
                             if answer_qq:
-                                await BotGame(str(answer_qq)).update_english_answer(1)
+                                user = BotGame(answer_qq)
+                                await user.update_english_answer(1)
+                                await user.update_coin(reward.get(answer_record[answer_qq][1], 40))
+                                __msg = ""
+                                if answer_record[answer_qq][1] != 1:
+                                    __msg = f'你连续答对了{answer_record[answer_qq][1]}题，太棒了，'
+                                __msg += f'奖励你{reward.get(answer_record[answer_qq][1], 40)}金币'
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
                                     Plain("恭喜 "),
                                     At(answer_qq),
-                                    Plain(f" 回答正确 {word_data[0]}")
+                                    Plain(f" 回答正确 {word_data[0]}，\n"),
+                                    Plain(__msg)
                                 ]))
                                 await asyncio.sleep(2)
                                 break
@@ -167,7 +218,7 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        if command.has('rank'):
+        if command.has('排行'):
             """排行"""
             try:
                 with MysqlDao() as db:
@@ -194,7 +245,7 @@ class Module(Plugin):
             except Exception as e:
                 logger.exception(e)
                 return self.unkown_error()
-        elif command.has('update'):
+        elif command.has('更新'):
             """更新题库"""
             config = Config()
             if self.member.id != int(config.MASTER_QQ):
