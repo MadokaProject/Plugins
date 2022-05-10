@@ -766,7 +766,7 @@ class Module(Plugin):
             return await self.print_help(alc.get_help())
         try:
             config = Config()
-            if command.has('start'):
+            if command.find('start'):
                 # 判断用户是否正在游戏中
                 if self.member.id in MEMBER_RUNING_LIST:
                     return
@@ -936,7 +936,7 @@ class Module(Plugin):
 
                 # 将用户移除正在游戏中
                 MEMBER_RUNING_LIST.remove(self.member.id)
-            elif command.has('status'):
+            elif command.find('status'):
                 if self.friend.id == int(config.MASTER_QQ):
                     runlist_len = len(GROUP_RUNING_LIST)
                     runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))

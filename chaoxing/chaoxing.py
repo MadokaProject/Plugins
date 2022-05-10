@@ -37,7 +37,7 @@ class Module(Plugin):
             return await self.print_help(alc.get_help())
         try:
             user = getattr(self, 'friend', None) or getattr(self, 'member', None)
-            if command.has('签到'):
+            if command.find('签到'):
                 """签到一次"""
                 info = await get_config(user.id)
                 if not info:
@@ -54,14 +54,14 @@ class Module(Plugin):
                     Image(data_bytes=await create_image(
                         (await send_message(results)).get_string())) if results else Plain('暂无签到任务')
                 ])
-            elif command.has('自动签到'):
+            elif command.find('自动签到'):
                 """自动签到开关"""
                 if not await get_config(user.id):
                     return MessageChain.create([Plain('你还未配置账号信息，请私聊我进行配置')])
                 with MysqlDao() as db:
-                    db.update('UPDATE chaoxing_sign SET auto_sign=%s WHERE qid=%s', [command.get('status'), user.id])
+                    db.update('UPDATE chaoxing_sign SET auto_sign=%s WHERE qid=%s', [command.query('status'), user.id])
                 return MessageChain.create([Plain('开启成功' if int(self.msg[1]) else '关闭成功')])
-            elif command.has('配置'):
+            elif command.find('配置'):
                 """配置账号信息"""
 
                 @Waiter.create_using_function([FriendMessage])

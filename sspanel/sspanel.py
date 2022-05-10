@@ -61,7 +61,7 @@ class Module(Plugin):
                             [self.friend.id, remove['host'], remove['email']]
                         ) else '删除失败！')
                     ])
-            elif command.has('list'):
+            elif command.find('list'):
                 with MysqlDao() as db:
                     res = db.query(
                         'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',

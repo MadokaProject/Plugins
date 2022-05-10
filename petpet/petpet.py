@@ -27,7 +27,7 @@ class Module(Plugin):
     ))
     async def process(self, command: Arpamar, alc: Alconna):
         try:
-            return MessageChain.create([Image(data_bytes=await petpet(command.get('qq').target))])
+            return MessageChain.create([Image(data_bytes=await petpet(command.query('qq').target))])
         except Exception as e:
             logger.exception(e)
             return self.unkown_error()

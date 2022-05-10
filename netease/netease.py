@@ -64,13 +64,13 @@ class Module(Plugin):
                             return MessageChain.create([Plain('移除成功！')])
                     else:
                         return MessageChain.create([Plain('该账号不存在！')])
-            elif command.has('list'):
+            elif command.find('list'):
                 if not hasattr(self, 'friend'):
                     return MessageChain.create([Plain('请私聊使用该命令!')])
                 with MysqlDao() as db:
                     res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
                     return MessageChain.create([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
-            elif command.has('rp'):
+            elif command.find('rp'):
                 req = await doHttpRequest('https://v.api.aa1.cn/api/api-wenan-wangyiyunreping/index.php?aa1=text', 'GET')
                 return MessageChain.create(req.strip('<p>').strip('</p>'))
             else:
