@@ -11,8 +11,8 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
+from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.core.config import Config
 from app.core.settings import *
 from app.entities.game import BotGame
 from app.plugin.base import Plugin
@@ -746,210 +746,211 @@ WORD = {
     ]
 }
 
+config: Config = AppCore.get_core_instance().get_config()
+manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-class Module(Plugin):
-    entry = 'ds'
-    brief_help = '你画我猜'
-    manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
-    @manager.register(Alconna(
+@manager.register(
+    entry='ds',
+    brief_help='你画我猜',
+    alc=Alconna(
         headers=manager.headers,
-        command=entry,
+        command='ds',
         options=[
             Subcommand('start', help_text='开始一局你画我猜游戏'),
             Subcommand('status', help_text='查看你画我猜状态')
         ],
         help_text='你画我猜'
     ))
-    async def process(self, command: Arpamar, alc: Alconna):
-        if not command.subcommands:
-            return await self.print_help(alc.get_help())
-        try:
-            config = Config()
-            if command.find('start'):
-                # 判断用户是否正在游戏中
-                if self.member.id in MEMBER_RUNING_LIST:
-                    return
-                else:
-                    MEMBER_RUNING_LIST.append(self.member.id)
+async def process(self: Plugin, command: Arpamar, alc: Alconna):
+    if not command.subcommands:
+        return await self.print_help(alc.get_help())
+    try:
+        if command.find('start'):
+            # 判断用户是否正在游戏中
+            if self.member.id in MEMBER_RUNING_LIST:
+                return
+            else:
+                MEMBER_RUNING_LIST.append(self.member.id)
 
-                # 判断私信是否可用
-                try:
-                    await self.app.sendFriendMessage(self.member.id, MessageChain.create([
-                        Plain(f"本消息仅用于测试私信是否可用，无需回复\n{time.time()}")
-                    ]))
-                except:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
-                        Plain(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {config.BOT_NAME} 好友，用于发送题目")
-                    ]))
-                    MEMBER_RUNING_LIST.remove(self.member.id)
-                    return
+            # 判断私信是否可用
+            try:
+                await self.app.sendFriendMessage(self.member.id, MessageChain.create([
+                    Plain(f"本消息仅用于测试私信是否可用，无需回复\n{time.time()}")
+                ]))
+            except Exception as e:
+                logger.warning(e)
+                await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    Plain(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {config.BOT_NAME} 好友，用于发送题目")
+                ]))
+                MEMBER_RUNING_LIST.remove(self.member.id)
+                return
 
-                # 请求确认中断
-                @Waiter.create_using_function([GroupMessage])
-                async def confirm(confirm_group: Group, confirm_member: Member, confirm_message: MessageChain,
-                                  confirm_source: Source):
-                    if all([confirm_group.id == self.group.id,
-                            confirm_member.id == self.member.id]):
-                        saying = confirm_message.asDisplay()
-                        if saying == "是":
-                            return True
-                        elif saying == "否":
-                            return False
-                        else:
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                At(confirm_member.id),
-                                Plain("请发送是或否来进行确认")
-                            ]), quote=confirm_source)
-
-                # 等待答案中断
-                @Waiter.create_using_function([GroupMessage])
-                async def start_game(submit_answer_group: Group, submit_answer_member: Member,
-                                     submit_answer_message: MessageChain, submit_answer_source: Source):
-                    group_id = GROUP_GAME_PROCESS[self.group.id]
-                    owner = group_id["owner"]
-                    question = group_id["question"].upper()
-                    question_len = len(question)
-                    saying = submit_answer_message.asDisplay().upper()
-                    saying_len = len(saying)
-
-                    if all([submit_answer_member.id == owner, saying in ["终止", "取消", "结束"]]):
+            # 请求确认中断
+            @Waiter.create_using_function([GroupMessage])
+            async def confirm(confirm_group: Group, confirm_member: Member, confirm_message: MessageChain,
+                              confirm_source: Source):
+                if all([confirm_group.id == self.group.id,
+                        confirm_member.id == self.member.id]):
+                    saying = confirm_message.asDisplay()
+                    if saying == "是":
+                        return True
+                    elif saying == "否":
                         return False
-
-                    if all([submit_answer_group.id == self.group.id, submit_answer_member.id != owner,
-                            saying_len == question_len]):
-                        if submit_answer_member.id not in group_id["player"]:
-                            GROUP_GAME_PROCESS[self.group.id]["player"][submit_answer_member.id] = 1
-                        if group_id["player"][submit_answer_member.id] < 9:
-                            talk_num = group_id["player"][submit_answer_member.id] + 1
-                            GROUP_GAME_PROCESS[self.group.id]["player"][submit_answer_member.id] = talk_num
-                            if saying == question:
-                                return [submit_answer_member, submit_answer_source]
-                        elif group_id["player"][submit_answer_member.id] == 9:
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                At(submit_answer_member.id),
-                                Plain("你的本回合答题机会已用尽")
-                            ]), quote=submit_answer_source)
-
-                # 如果当前群有一个正在进行中的游戏
-                if self.group.id in GROUP_RUNING_LIST:
-                    if self.group.id not in GROUP_GAME_PROCESS:
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            At(self.member.id),
-                            Plain(" 本群正在请求确认开启一场游戏，请稍候")
-                        ]), quote=self.source)
                     else:
-                        owner = GROUP_GAME_PROCESS[self.group.id]["owner"]
-                        owner_name = (await self.app.getMember(self.group, owner)).name
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            At(self.member.id),
-                            Plain(" 本群存在一场已经开始的游戏，请等待当前游戏结束"),
-                            Plain(f"\n发起者：{str(owner)} | {owner_name}")
-                        ]), quote=self.source)
-                # 新游戏创建流程
+                            At(confirm_member.id),
+                            Plain("请发送是或否来进行确认")
+                        ]), quote=confirm_source)
+
+            # 等待答案中断
+            @Waiter.create_using_function([GroupMessage])
+            async def start_game(submit_answer_group: Group, submit_answer_member: Member,
+                                 submit_answer_message: MessageChain, submit_answer_source: Source):
+                group_id = GROUP_GAME_PROCESS[self.group.id]
+                _owner = group_id["owner"]
+                _question = group_id["question"].upper()
+                _question_len = len(_question)
+                saying = submit_answer_message.asDisplay().upper()
+                saying_len = len(saying)
+
+                if all([submit_answer_member.id == _owner, saying in ["终止", "取消", "结束"]]):
+                    return False
+
+                if all([submit_answer_group.id == self.group.id, submit_answer_member.id != _owner,
+                        saying_len == _question_len]):
+                    if submit_answer_member.id not in group_id["player"]:
+                        GROUP_GAME_PROCESS[self.group.id]["player"][submit_answer_member.id] = 1
+                    if group_id["player"][submit_answer_member.id] < 9:
+                        talk_num = group_id["player"][submit_answer_member.id] + 1
+                        GROUP_GAME_PROCESS[self.group.id]["player"][submit_answer_member.id] = talk_num
+                        if saying == _question:
+                            return [submit_answer_member, submit_answer_source]
+                    elif group_id["player"][submit_answer_member.id] == 9:
+                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            At(submit_answer_member.id),
+                            Plain("你的本回合答题机会已用尽")
+                        ]), quote=submit_answer_source)
+
+            # 如果当前群有一个正在进行中的游戏
+            if self.group.id in GROUP_RUNING_LIST:
+                if self.group.id not in GROUP_GAME_PROCESS:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        At(self.member.id),
+                        Plain(" 本群正在请求确认开启一场游戏，请稍候")
+                    ]), quote=self.source)
                 else:
-                    GROUP_RUNING_LIST.append(self.group.id)
-                    try:
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            Plain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
-                        ]), quote=self.source)
-                    except UnknownTarget:
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            At(self.member.id),
-                            Plain(f" 是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
-                        ]))
-                    try:
-                        # 新游戏创建完成，进入等待玩家阶段
-                        if await asyncio.wait_for(self.inc.wait(confirm), timeout=15):
-                            question = secrets.choice(WORD["word"])
-                            GROUP_GAME_PROCESS[self.group.id] = {
-                                "question": question,
-                                "owner": self.member.id,
-                                "player": {}
-                            }
-                            if await BotGame(str(self.member.id)).get_coins() < 4:
+                    owner = GROUP_GAME_PROCESS[self.group.id]["owner"]
+                    owner_name = (await self.app.getMember(self.group, owner)).name
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        At(self.member.id),
+                        Plain(" 本群存在一场已经开始的游戏，请等待当前游戏结束"),
+                        Plain(f"\n发起者：{str(owner)} | {owner_name}")
+                    ]), quote=self.source)
+            # 新游戏创建流程
+            else:
+                GROUP_RUNING_LIST.append(self.group.id)
+                try:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        Plain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
+                    ]), quote=self.source)
+                except UnknownTarget:
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        At(self.member.id),
+                        Plain(f" 是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
+                    ]))
+                try:
+                    # 新游戏创建完成，进入等待玩家阶段
+                    if await asyncio.wait_for(self.inc.wait(confirm), timeout=15):
+                        question = secrets.choice(WORD["word"])
+                        GROUP_GAME_PROCESS[self.group.id] = {
+                            "question": question,
+                            "owner": self.member.id,
+                            "player": {}
+                        }
+                        if await BotGame(str(self.member.id)).get_coins() < 4:
+                            GROUP_RUNING_LIST.remove(self.group.id)
+                            del GROUP_GAME_PROCESS[self.group.id]
+                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                At(self.member.id),
+                                Plain(f" 你的{config.COIN_NAME}不足，无法开始游戏")]))
+                            return
+                        else:
+                            await BotGame(str(self.member.id)).update_coin(-4)
+                            question_len = len(question)
+                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                Plain(f"本次题目为 {question_len} 个字，请等待 "),
+                                At(self.member.id),
+                                Plain(" 在群中绘图"),
+                                Plain("\n创建者发送 <取消/终止/结束> 可结束本次游戏"),
+                                Plain("\n每人每回合只有 8 次答题机会，请勿刷屏请勿抢答。")
+                            ]), quote=self.source)
+                            await asyncio.sleep(1)
+                            await self.app.sendFriendMessage(self.member.id, MessageChain.create([
+                                Plain(f"本次的题目为：{question}，请在一分钟内\n在群中\n在群中\n在群中\n发送涂鸦或其他形式等来表示该主题")
+                            ]))
+
+                        try:
+                            result = await asyncio.wait_for(self.inc.wait(start_game), timeout=180)
+                            if result:
+                                owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
+                                await BotGame(owner).update_coin(2)
+                                await BotGame(str(result[0].id)).update_coin(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
-                                await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                    At(self.member.id),
-                                    Plain(f" 你的{config.COIN_NAME}不足，无法开始游戏")]))
-                                return
+                                await self.app.sendGroupMessage(self.group.id, MessageChain.create([
+                                    Plain("恭喜 "),
+                                    At(result[0].id),
+                                    Plain(f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{config.COIN_NAME}，本次游戏结束")
+                                ]), quote=result[1])
                             else:
-                                await BotGame(str(self.member.id)).update_coin(-4)
-                                question_len = len(question)
-                                await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                    Plain(f"本次题目为 {question_len} 个字，请等待 "),
-                                    At(self.member.id),
-                                    Plain(" 在群中绘图"),
-                                    Plain("\n创建者发送 <取消/终止/结束> 可结束本次游戏"),
-                                    Plain("\n每人每回合只有 8 次答题机会，请勿刷屏请勿抢答。")
-                                ]), quote=self.source)
-                                await asyncio.sleep(1)
-                                await self.app.sendFriendMessage(self.member.id, MessageChain.create([
-                                    Plain(f"本次的题目为：{question}，请在一分钟内\n在群中\n在群中\n在群中\n发送涂鸦或其他形式等来表示该主题")
-                                ]))
-
-                            try:
-                                result = await asyncio.wait_for(self.inc.wait(start_game), timeout=180)
-                                if result:
-                                    owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    await BotGame(owner).update_coin(2)
-                                    await BotGame(str(result[0].id)).update_coin(1)
-                                    GROUP_RUNING_LIST.remove(self.group.id)
-                                    del GROUP_GAME_PROCESS[self.group.id]
-                                    await self.app.sendGroupMessage(self.group.id, MessageChain.create([
-                                        Plain("恭喜 "),
-                                        At(result[0].id),
-                                        Plain(f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{config.COIN_NAME}，本次游戏结束")
-                                    ]), quote=result[1])
-                                else:
-                                    owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                    await BotGame(owner).update_coin(1)
-                                    GROUP_RUNING_LIST.remove(self.group.id)
-                                    del GROUP_GAME_PROCESS[self.group.id]
-                                    await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                        Plain(f"本次你画我猜已终止，将返还创建者 1 点{config.COIN_NAME}")
-                                    ]))
-                            except asyncio.TimeoutError:
                                 owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
-                                question = GROUP_GAME_PROCESS[self.group.id]["question"]
                                 await BotGame(owner).update_coin(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
                                 await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                    Plain(f"由于长时间没有人回答出正确答案，将返还创建者 1 点{config.COIN_NAME}，本次你画我猜已结束"),
-                                    Plain(f"\n本次的答案为：{question}")
+                                    Plain(f"本次你画我猜已终止，将返还创建者 1 点{config.COIN_NAME}")
                                 ]))
-
-                        # 终止创建流程
-                        else:
+                        except asyncio.TimeoutError:
+                            owner = str(GROUP_GAME_PROCESS[self.group.id]["owner"])
+                            question = GROUP_GAME_PROCESS[self.group.id]["question"]
+                            await BotGame(owner).update_coin(1)
                             GROUP_RUNING_LIST.remove(self.group.id)
+                            del GROUP_GAME_PROCESS[self.group.id]
                             await self.app.sendGroupMessage(self.group, MessageChain.create([
-                                Plain("已取消")
+                                Plain(f"由于长时间没有人回答出正确答案，将返还创建者 1 点{config.COIN_NAME}，本次你画我猜已结束"),
+                                Plain(f"\n本次的答案为：{question}")
                             ]))
-                    # 如果 15 秒内无响应
-                    except asyncio.TimeoutError:
+
+                    # 终止创建流程
+                    else:
                         GROUP_RUNING_LIST.remove(self.group.id)
                         await self.app.sendGroupMessage(self.group, MessageChain.create([
-                            Plain("确认超时")
+                            Plain("已取消")
                         ]))
+                # 如果 15 秒内无响应
+                except asyncio.TimeoutError:
+                    GROUP_RUNING_LIST.remove(self.group.id)
+                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        Plain("确认超时")
+                    ]))
 
-                # 将用户移除正在游戏中
-                MEMBER_RUNING_LIST.remove(self.member.id)
-            elif command.find('status'):
-                if self.friend.id == int(config.MASTER_QQ):
-                    runlist_len = len(GROUP_RUNING_LIST)
-                    runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
-                    if runlist_len > 0:
-                        await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
-                            Plain(f"当前共有 {runlist_len} 个群正在玩你画我猜"),
-                            Plain(f"\n{runlist_str}")
-                        ]))
-                    else:
-                        await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
-                            Plain(f"当前没有正在运行你画我猜的群")
-                        ]))
-            return self.args_error()
-        except Exception as e:
-            logger.exception(e)
-            return self.unkown_error()
+            # 将用户移除正在游戏中
+            MEMBER_RUNING_LIST.remove(self.member.id)
+        elif command.find('status'):
+            if self.friend.id == int(config.MASTER_QQ):
+                runlist_len = len(GROUP_RUNING_LIST)
+                runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
+                if runlist_len > 0:
+                    await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
+                        Plain(f"当前共有 {runlist_len} 个群正在玩你画我猜"),
+                        Plain(f"\n{runlist_str}")
+                    ]))
+                else:
+                    await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
+                        Plain(f"当前没有正在运行你画我猜的群")
+                    ]))
+        return self.args_error()
+    except Exception as e:
+        logger.exception(e)
+        return self.unkown_error()

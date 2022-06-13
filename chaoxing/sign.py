@@ -11,6 +11,7 @@ from aiohttp import ClientSession
 from aiohttp.cookiejar import SimpleCookie
 from bs4 import BeautifulSoup
 from lxml import etree
+
 from app.util.tools import app_path
 
 BASE_PATH = os.path.join(app_path(), 'plugin', 'extension', 'chaoxing_res')
@@ -459,4 +460,3 @@ class AutoSign(object):
 
     async def close_session(self):
         await self.session.close()
-

@@ -2,7 +2,7 @@
     "EnglishTest": {
         "name": "背单词",
         "author": "MadokaProject",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "resource": [
             "worddict/BEC_2.json",
             "worddict/ChuZhongluan_2.json",
@@ -35,7 +35,7 @@
     "wordCloud": {
         "name": "词云",
         "author": "MadokaProject",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "resource": [
             "wordcloud.jpg"
         ],
@@ -44,21 +44,14 @@
     "sspanel": {
         "name": "机场签到",
         "author": "MadokaProject",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "resource": [],
         "pypi": true
-    },
-    "werewolf": {
-        "name": "狼人杀",
-        "author": "MadokaProject",
-        "version": "0.0.2",
-        "resource": [],
-        "pypi": false
     },
     "petpet": {
         "name": "摸摸",
         "author": "MadokaProject",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "resource": [
             "PetPetFrames/frame0.png",
             "PetPetFrames/frame1.png",
@@ -72,35 +65,35 @@
     "DrawSomething": {
         "name": "你画我猜",
         "author": "MadokaProject",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "resource": [],
         "pypi": false
     },
     "horseRacing": {
         "name": "赛马",
         "author": "MadokaProject",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "resource": [],
         "pypi": false
     },
     "setu": {
         "name": "涩图",
         "author": "MadokaProject",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "resource": [],
         "pypi": false
     },
     "netease": {
         "name": "网易云音乐",
         "author": "MadokaProject",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "resource": [],
         "pypi": true
     },
     "chaoxing": {
         "name": "学习通",
         "author": "Colsrch",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "resource": [
             "sign.py"
         ],
