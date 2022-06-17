@@ -28,9 +28,9 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         headers=manager.headers,
         command='sspnael',
         options=[
-            Subcommand('qd', help_text='立即进行一次签到', args=Args['host': 'url', 'email': 'email', 'password': str]),
-            Subcommand('add', help_text='添加/修改签到账号', args=Args['host': 'url', 'email': 'email', 'password': str]),
-            Subcommand('remove', help_text='删除签到账号', args=Args['host': 'url', 'email': 'email']),
+            Subcommand('qd', help_text='立即进行一次签到', args=Args['host', 'url']['email', 'email']['password', str]),
+            Subcommand('add', help_text='添加/修改签到账号', args=Args['host', 'url']['email', 'email']['password', str]),
+            Subcommand('remove', help_text='删除签到账号', args=Args['host', 'url']['email', 'email']),
             Subcommand('list', help_text='列出你添加的签到账号')
         ],
         help_text='机场签到: 为保证账号安全, 该服务仅私发有效'

@@ -33,7 +33,7 @@ database: InitDB = InitDB.get_instance()
         command='xxt',
         options=[
             Subcommand('签到', help_text='立即进行一次签到操作'),
-            Subcommand('自动签到', args=Args['status': ['0', '1']], help_text='开关自动签到'),
+            Subcommand('自动签到', args=Args['status', ['0', '1']], help_text='开关自动签到'),
             Subcommand('配置', help_text='配置学习通账号信息')
         ],
         help_text='学习通签到工具'

@@ -32,9 +32,9 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         command='wyy',
         options=[
             Subcommand('rp', help_text='网易云热评'),
-            Subcommand('qd', help_text='立即进行一次签到', args=Args['phone': int, 'password': str]),
-            Subcommand('add', help_text='添加自动签到', args=Args['phone': int, 'password': str]),
-            Subcommand('remove', help_text='移除指定账号的自动签到', args=Args['phone': int]),
+            Subcommand('qd', help_text='立即进行一次签到', args=Args['phone', int]['password', str]),
+            Subcommand('add', help_text='添加自动签到', args=Args['phone', int]['password', str]),
+            Subcommand('remove', help_text='移除指定账号的自动签到', args=Args['phone', int]),
             Subcommand('list', help_text='列出你添加的自动签到账号')
         ],
         help_text='网易云: 为保证账号安全, 签到服务仅私发有效'

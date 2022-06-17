@@ -22,7 +22,7 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
     alc=Alconna(
         headers=manager.headers,
         command='pet',
-        main_args=Args['qq': At],
+        main_args=Args['qq', At],
         help_text='摸摸'
     ))
 async def process(self: Plugin, command: Arpamar, alc: Alconna):

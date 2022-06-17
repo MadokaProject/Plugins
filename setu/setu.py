@@ -27,9 +27,9 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         headers=manager.headers,
         command='setu',
         options=[
-            Option('--uid|-u', help_text='指定作者信息', args=Args['uid': str]),
-            Option('--tag|-t', help_text='指定标签(多个相似标签使用 | 分隔', args=Args['tag': str]),
-            Subcommand('r18', help_text='开关R-18模式(慎用)[默认关闭]', args=Args['r18': bool:False])
+            Option('--uid|-u', help_text='指定作者信息', args=Args['uid', str]),
+            Option('--tag|-t', help_text='指定标签(多个相似标签使用 | 分隔', args=Args['tag', str]),
+            Subcommand('r18', help_text='开关R-18模式(慎用)[默认关闭]', args=Args['r18', bool, False])
         ],
         help_text='消耗10资金随机获取一张setu, 消耗15资金指定特定信息搜索'
     ))
