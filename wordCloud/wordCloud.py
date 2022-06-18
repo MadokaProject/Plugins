@@ -47,7 +47,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
         return await self.print_help(alc.get_help())
     try:
         if not hasattr(self, 'group'):
-            return MessageChain.create([Plain('请在群组使用该命令！')])
+            return MessageChain([Plain('请在群组使用该命令！')])
         if RUNNING < 5:
             RUNNING += 1
             RUNNING_LIST.append(self.member.id)
@@ -65,22 +65,22 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 talk_list = [re.sub(r'[0-9]+', '', talk[0]).strip('@') for talk in talk_list if
                              talk[0] not in ['[图片]']]
             if len(talk_list) < 10:
-                await safeSendGroupMessage(self.group, MessageChain.create([Plain("当前样本量较少，无法制作")]))
+                await safeSendGroupMessage(self.group, MessageChain([Plain("当前样本量较少，无法制作")]))
                 RUNNING -= 1
                 RUNNING_LIST.remove(self.member.id)
                 return
-            await safeSendGroupMessage(self.group, MessageChain.create(
+            await safeSendGroupMessage(self.group, MessageChain(
                 [At(self.member.id), Plain(f" 正在制作词云，一周内共 {len(talk_list)} 条记录")]
             ))
             words = await get_frequencies(talk_list)
             image = await to_thread(make_wordcloud, words)
-            await safeSendGroupMessage(self.group, MessageChain.create([
+            await safeSendGroupMessage(self.group, MessageChain([
                 At(self.member.id), Plain(f" 已成功制作{self.msg[0]}词云"), Image(data_bytes=image)]
             ))
             RUNNING -= 1
             RUNNING_LIST.remove(self.member.id)
         else:
-            await safeSendGroupMessage(self.group, MessageChain.create([Plain("词云生成进程正忙，请稍后")]))
+            await safeSendGroupMessage(self.group, MessageChain([Plain("词云生成进程正忙，请稍后")]))
     except Exception as e:
         logger.exception(e)
         return self.unkown_error()

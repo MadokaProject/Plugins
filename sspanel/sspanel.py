@@ -41,7 +41,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
         return await self.print_help(alc.get_help())
     try:
         if not hasattr(self, 'friend'):
-            return MessageChain.create([Plain('请私聊使用该命令!')])
+            return MessageChain([Plain('请私聊使用该命令!')])
         if qd := subcommand.get('qd'):
             account = {0: {
                 'web': qd['host'],
@@ -49,13 +49,13 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 'pwd': qd['password']
             }}
             msg = await checkin(account)
-            return MessageChain.create([
+            return MessageChain([
                 Plain('机场签到完成\r\n'),
                 Plain(msg)
             ])
         elif add := subcommand.get('add'):
             with MysqlDao() as db:
-                return MessageChain.create([
+                return MessageChain([
                     Plain('添加/修改成功！' if db.update(
                         'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
                         [self.friend.id, add['host'], add['email'], add['password']]
@@ -63,7 +63,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 ])
         elif remove := subcommand.get('remove'):
             with MysqlDao() as db:
-                return MessageChain.create([
+                return MessageChain([
                     Plain('删除成功！' if db.update(
                         'DELETE FROM plugin_sspanel_account WHERE qid=%s and web=%s and user=%s',
                         [self.friend.id, remove['host'], remove['email']]
@@ -75,7 +75,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',
                     [self.friend.id]
                 )
-                return MessageChain.create([
+                return MessageChain([
                     Plain('\n'.join(f'{index}: {web}\t{user}' for index, (web, user) in enumerate(res)))
                 ])
         return self.args_error()
@@ -164,7 +164,7 @@ async def checkin(account):
 
 async def message_send(msg, qid):
     """签到消息推送"""
-    await app.sendFriendMessage(qid, MessageChain.create([
+    await app.send_friend_message(qid, MessageChain([
         Plain('机场签到完成\r\n'),
         Plain(msg)
     ]))

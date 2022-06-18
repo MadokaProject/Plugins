@@ -47,7 +47,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             """签到一次"""
             info = await get_config(user.id)
             if not info:
-                return MessageChain.create([Plain('你还未配置账号信息，请私聊我进行配置')])
+                return MessageChain([Plain('你还未配置账号信息，请私聊我进行配置')])
             auto_sign = AutoSign(username=info[0],
                                  password=info[1],
                                  latitude=info[2],
@@ -56,62 +56,62 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                                  address=info[5])
             results: List[List[Dict]] = await auto_sign.start_sign_task()
             await auto_sign.close_session()
-            return MessageChain.create([
+            return MessageChain([
                 Image(data_bytes=await create_image(
                     (await send_message(results)).get_string())) if results else Plain('暂无签到任务')
             ])
         elif command.find('自动签到'):
             """自动签到开关"""
             if not await get_config(user.id):
-                return MessageChain.create([Plain('你还未配置账号信息，请私聊我进行配置')])
+                return MessageChain([Plain('你还未配置账号信息，请私聊我进行配置')])
             with MysqlDao() as db:
                 db.update('UPDATE chaoxing_sign SET auto_sign=%s WHERE qid=%s', [command.query('status'), user.id])
-            return MessageChain.create([Plain('开启成功' if int(self.msg[1]) else '关闭成功')])
+            return MessageChain([Plain('开启成功' if int(self.msg[1]) else '关闭成功')])
         elif command.find('配置'):
             """配置账号信息"""
 
             @Waiter.create_using_function([FriendMessage])
             async def waiter(waiter_friend: Friend, waiter_message: MessageChain):
                 if waiter_friend.id == self.friend.id:
-                    waiter_saying = waiter_message.asDisplay()
+                    waiter_saying = waiter_message.display
                     if waiter_saying == '取消':
-                        await self.app.sendFriendMessage(waiter_friend, MessageChain.create([Plain('取消配置!')]))
+                        await self.app.send_friend_message(waiter_friend, MessageChain([Plain('取消配置!')]))
                         return False
                     return waiter_saying
 
             @Waiter.create_using_function([FriendMessage])
             async def answer_waiter(waiter_friend: Friend, waiter_message: MessageChain):
                 if waiter_friend.id == self.friend.id:
-                    waiter_saying = waiter_message.asDisplay()
+                    waiter_saying = waiter_message.display
                     if waiter_saying == '是':
                         return True
                     elif waiter_saying == '否':
                         return False
                     else:
-                        await self.app.sendFriendMessage(waiter_friend, MessageChain.create([Plain('请回答：是 / 否')]))
+                        await self.app.send_friend_message(waiter_friend, MessageChain([Plain('请回答：是 / 否')]))
 
             if not hasattr(self, 'friend'):
-                return MessageChain.create([Plain('请私聊我配置账号信息')])
+                return MessageChain([Plain('请私聊我配置账号信息')])
             if await get_config(user.id):
-                await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('你已经配置了账号信息，是否重新配置？')]))
+                await self.app.send_friend_message(self.friend, MessageChain([Plain('你已经配置了账号信息，是否重新配置？')]))
                 if not await asyncio.wait_for(self.inc.wait(answer_waiter), timeout=15):
                     return
-            await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('开始配置，若想中途退出配置请发送：取消')]))
+            await self.app.send_friend_message(self.friend, MessageChain([Plain('开始配置，若想中途退出配置请发送：取消')]))
             await asyncio.sleep(1)
-            await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('请输入用户名（手机号）')]))
+            await self.app.send_friend_message(self.friend, MessageChain([Plain('请输入用户名（手机号）')]))
             if username := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('请输入密码')]))
+                await self.app.send_friend_message(self.friend, MessageChain([Plain('请输入密码')]))
                 if password := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                    await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('请输入定位纬度')]))
+                    await self.app.send_friend_message(self.friend, MessageChain([Plain('请输入定位纬度')]))
                     if latitude := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                        await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('请输入定位经度')]))
+                        await self.app.send_friend_message(self.friend, MessageChain([Plain('请输入定位经度')]))
                         if longitude := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                            await self.app.sendFriendMessage(self.friend, MessageChain.create([Plain('请输入你的IP地址')]))
+                            await self.app.send_friend_message(self.friend, MessageChain([Plain('请输入你的IP地址')]))
                             if clientip := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                                await self.app.sendFriendMessage(self.friend,
-                                                                 MessageChain.create([Plain('请输入定位地址名')]))
+                                await self.app.send_friend_message(self.friend,
+                                                                 MessageChain([Plain('请输入定位地址名')]))
                                 if address := await asyncio.wait_for(self.inc.wait(waiter), timeout=60):
-                                    await self.app.sendFriendMessage(self.friend, MessageChain.create([
+                                    await self.app.send_friend_message(self.friend, MessageChain([
                                         Plain('配置完成，请检查你的配置信息\r\n'),
                                         Plain(f'用户名：{username}\r\n密码：{password}\r\n纬度：{latitude}\r\n'),
                                         Plain(f'经度：{longitude}\r\nIP地址：{clientip}\r\n地址名：{address}\r\n'),
@@ -125,11 +125,11 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                                                 [self.friend.id, username, password, latitude, longitude, clientip,
                                                  address]
                                             )
-                                        return MessageChain.create([Plain('配置成功！')])
+                                        return MessageChain([Plain('配置成功！')])
         else:
             return self.args_error()
     except asyncio.TimeoutError:
-        return MessageChain.create([Plain('回答超时')])
+        return MessageChain([Plain('回答超时')])
     except Exception as e:
         logger.exception(e)
         return self.unkown_error()
@@ -181,7 +181,7 @@ async def tasker(self):
             "clientip": user[5],
             "address": user[6]
         }):
-            await self.app.sendFriendMessage(int(user[0]), MessageChain.create([
+            await self.app.send_friend_message(int(user[0]), MessageChain([
                 Image(data_bytes=await create_image((await send_message(result)).get_string()))
             ]))
 

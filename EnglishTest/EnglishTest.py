@@ -21,7 +21,7 @@ from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
 
-book_id = {
+BOOK_ID = {
     "CET4luan_1": {"name": "四级真题核心词", "id": "1"},
     "CET6luan_1": {"name": "六级真题核心词", "id": "2"},
     "KaoYanluan_1": {"name": "考研必考词汇", "id": "3"},
@@ -39,9 +39,9 @@ book_id = {
     "BEC_2": {"name": "商务英语词汇", "id": "15"},
 }
 
-book_list = []
-for book in book_id:
-    book_list.append(f"{book_id[book]['id']}. {book_id[book]['name']}")
+BOOK_LIST = []
+for book in BOOK_ID:
+    BOOK_LIST.append(f"{BOOK_ID[book]['id']}. {BOOK_ID[book]['name']}")
 
 Process = [1, 2, 3, 4]
 
@@ -84,78 +84,78 @@ database: InitDB = InitDB.get_instance()
             Subcommand('更新', help_text='更新词库: 仅主人可用')
         ],
         help_text='开启一轮背单词'
-    ))
+    )
+)
 async def process(self: Plugin, command: Arpamar, alc: Alconna):
     if not hasattr(self, 'group'):
-        return MessageChain.create([Plain('请在群聊内使用该命令!')])
+        return MessageChain([Plain('请在群聊内使用该命令!')])
     if not command.subcommands:
         """开始背诵单词"""
         try:
             @Waiter.create_using_function([GroupMessage])
             async def confirm(waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
                 if all([waiter_group.id == self.group.id, waiter_member.id == self.member.id]):
-                    waiter_saying = waiter_message.asDisplay()
+                    waiter_saying = waiter_message.display
                     if waiter_saying == "取消":
                         return False
                     else:
                         try:
-                            waiter_saying = int(waiter_saying)
-                            if 1 <= waiter_saying <= 15:
-                                return waiter_saying
-                        except Exception as __e:
-                            logger.warning(__e)
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            confirm_book_id = int(waiter_saying)
+                            if 1 <= confirm_book_id <= 15:
+                                return confirm_book_id
+                        except:
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain("请输入1-15以内的数字")
                             ]))
 
             @Waiter.create_using_function([GroupMessage])
             async def waiter(waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
                 if waiter_group.id == self.group.id:
-                    waiter_saying = waiter_message.asDisplay()
+                    waiter_saying = waiter_message.display
                     if waiter_saying == "取消":
                         return False
                     elif waiter_saying[0] == '#':
-                        _user = waiter_member.id
+                        waiter_user = waiter_member.id
                         if waiter_saying.strip('#') == RUNNING[self.group.id]:
-                            if _user in answer_record and answer_record[_user][0]:
-                                answer_record[_user][1] += 1
+                            if waiter_user in answer_record and answer_record[waiter_user][0]:
+                                answer_record[waiter_user][1] += 1
                             else:
-                                answer_record[_user] = [True, 1]
-                            return _user
+                                answer_record[waiter_user] = [True, 1]
+                            return waiter_user
                         else:
-                            if _user in answer_record and not answer_record[_user][0]:
-                                answer_record[_user][1] += 1
+                            if waiter_user in answer_record and not answer_record[waiter_user][0]:
+                                answer_record[waiter_user][1] += 1
                             else:
-                                answer_record[_user] = [False, 1]
-                            await BotGame(_user).update_coin(punishment.get(answer_record[_user][1], -15))
-                            if answer_record[_user][1] == 1:
+                                answer_record[waiter_user] = [False, 1]
+                            await BotGame(waiter_user).update_coin(punishment.get(answer_record[waiter_user][1], -15))
+                            if answer_record[waiter_user][1] == 1:
                                 _msg = '你答错了哦，'
                             else:
-                                _msg = f'你连续答错了{answer_record[_user][1]}题了哦，'
-                            _msg += f'惩罚你{punishment.get(answer_record[_user][1], -15)}金币'
-                            await self.app.sendGroupMessage(waiter_group, MessageChain.create([
-                                At(_user), Plain(_msg)
+                                _msg = f'你连续答错了{answer_record[waiter_user][1]}题了哦，'
+                            _msg += f'惩罚你{punishment.get(answer_record[waiter_user][1], -15)}金币'
+                            await self.app.send_group_message(waiter_group, MessageChain([
+                                At(waiter_user), Plain(_msg)
                             ]))
 
             if self.group.id in RUNNING:
                 return
 
             RUNNING[self.group.id] = None
-            await self.app.sendGroupMessage(self.group, MessageChain.create([
+            await self.app.send_group_message(self.group, MessageChain([
                 Plain("请输入你想要选择的词库ID"),
-                Image(data_bytes=await create_image("\n".join(book_list)))
+                Image(data_bytes=await create_image("\n".join(BOOK_LIST)))
             ]))
 
             try:
-                __book_id = await asyncio.wait_for(self.inc.wait(confirm), timeout=30)
-                if not __book_id:
+                book_id = await asyncio.wait_for(self.inc.wait(confirm), timeout=30)
+                if not book_id:
                     del RUNNING[self.group.id]
-                    return await self.app.sendGroupMessage(self.group, MessageChain.create([Plain("已取消")]))
+                    return await self.app.send_group_message(self.group, MessageChain([Plain("已取消")]))
             except asyncio.TimeoutError:
                 del RUNNING[self.group.id]
-                return await self.app.sendGroupMessage(self.group, MessageChain.create([Plain("等待超时")]))
+                return await self.app.send_group_message(self.group, MessageChain([Plain("等待超时")]))
 
-            await self.app.sendGroupMessage(self.group, MessageChain.create([Plain("已开启本次答题，可随时发送取消终止进程")]))
+            await self.app.send_group_message(self.group, MessageChain([Plain("已开启本次答题，可随时发送取消终止进程")]))
 
             answer_record = {}  # 答题记录，用于奖励
 
@@ -172,7 +172,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 for p in pop:
                     wordinfo.append(f"[ {p} ] {tran[tran_num]}")
                     tran_num += 1
-                await self.app.sendGroupMessage(self.group, MessageChain.create([
+                await self.app.send_group_message(self.group, MessageChain([
                     Plain("本回合题目：\n"),
                     Plain("\n".join(wordinfo)),
                     Plain("\n答题请输入 # 开头")
@@ -188,7 +188,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             if answer_record[answer_qq][1] != 1:
                                 __msg = f'你连续答对了{answer_record[answer_qq][1]}题，太棒了，'
                             __msg += f'奖励你{reward.get(answer_record[answer_qq][1], 40)}金币'
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain("恭喜 "),
                                 At(answer_qq),
                                 Plain(f" 回答正确 {word_data[0]}，\n"),
@@ -198,25 +198,25 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             break
                         else:
                             del RUNNING[self.group.id]
-                            return await self.app.sendGroupMessage(self.group,
-                                                                   MessageChain.create([Plain("已结束本次答题")]))
+                            return await self.app.send_group_message(self.group,
+                                                                   MessageChain([Plain("已结束本次答题")]))
 
                     except asyncio.TimeoutError:
                         if __process == 1:
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"提示1\n这个单词由 {word_len} 个字母构成")
                             ]))
                         elif __process == 2:
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"提示2\n这个单词的首字母是 {word_data[0][0]}")
                             ]))
                         elif __process == 3:
                             half = int(word_len / 2)
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"提示3\n这个单词的前半部分为\n{word_data[0][:half]}")]))
                         elif __process == 4:
                             del RUNNING[self.group.id]
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"本次答案为：{word_data[0]}\n答题已结束，请重新开启")
                             ]))
                             return
@@ -230,9 +230,9 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 res = db.query(
                     "SELECT qid, english_answer FROM game ORDER BY english_answer DESC"
                 )
-                members = await self.app.getMemberList(self.group.id)
+                members = await self.app.get_member_list(self.group.id)
                 group_user = {item.id: item.name for item in members}
-                resp = MessageChain.create([Plain('群内英语答题排行：\r\n')])
+                resp = MessageChain([Plain('群内英语答题排行：\r\n')])
                 index = 1
                 msg = PrettyTable()
                 msg.field_names = ['序号', '群昵称', '答题数量']
@@ -243,7 +243,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     index += 1
                 msg.align = 'r'
                 msg.align['群昵称'] = 'l'
-                resp.extend(MessageChain.create([
+                resp.extend(MessageChain([
                     Image(data_bytes=await create_image(msg.get_string()))
                 ]))
                 return resp
@@ -252,9 +252,9 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             return self.unkown_error()
     elif command.find('更新'):
         """更新题库"""
-        if self.member.id != int(config.MASTER_QQ):
+        if self.member.id != config.MASTER_QQ:
             return self.not_admin()
-        await self.app.sendGroupMessage(self.group, MessageChain.create([
+        await self.app.send_group_message(self.group, MessageChain([
             Plain('正在更新题库，所需时间可能较长，请耐心等待')
         ]))
         await asyncio.gather(update_english_test())
@@ -262,16 +262,16 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
         return self.args_error()
 
 
-async def random_word(bookid):
+async def random_word(book_id):
     with MysqlDao() as __db:
-        p = __db.query('SELECT * FROM word_dict WHERE bookId=%s', [str(bookid)])
+        p = __db.query('SELECT * FROM word_dict WHERE bookId=%s', [str(book_id)])
         data = random.choice(p)
         return [data[0], data[1], data[2]]
 
 
 async def update_english_test():
     with MysqlDao() as db:
-        def replaceFran(_str):
+        def replaceFran(text):
             fr_en = [['é', 'e'], ['ê', 'e'],
                      ['è', 'e'], ['ë', 'e'],
                      ['à', 'a'], ['â', 'a'],
@@ -280,8 +280,8 @@ async def update_english_test():
                      ['ù', 'u'], ['û', 'u'],
                      ['ü', 'u'], ['ÿ', 'y']]
             for i in fr_en:
-                _str = _str.replace(i[0], i[1])
-            return _str
+                text = text.replace(i[0], i[1])
+            return text
 
         try:
             for filename in os.listdir("app/plugin/extension/EnglishTest_res/worddict"):
@@ -299,16 +299,16 @@ async def update_english_test():
                             replaceFran(word_json["headWord"]),
                             "&".join(word_pop),
                             "&".join(word_tran),
-                            book_id[word_json['bookId']]['id']
+                            BOOK_ID[word_json['bookId']]['id']
                         ]
                         db.update(
                             'INSERT INTO word_dict(word, pos, tran, bookId) VALUES(%s, %s, %s, %s)',
                             [data[0], data[1], data[2], data[3]]
                         )
-            return MessageChain.create([Plain('题库更新完成！')])
+            return MessageChain([Plain('题库更新完成！')])
         except Exception as e:
             logger.exception(e)
-            return MessageChain.create([Plain(f'题库更新异常: {e}')])
+            return MessageChain([Plain(f'题库更新异常: {e}')])
 
 
 @database.init()

@@ -775,12 +775,12 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
 
             # 判断私信是否可用
             try:
-                await self.app.sendFriendMessage(self.member.id, MessageChain.create([
+                await self.app.send_friend_message(self.member.id, MessageChain([
                     Plain(f"本消息仅用于测试私信是否可用，无需回复\n{time.time()}")
                 ]))
             except Exception as e:
                 logger.warning(e)
-                await self.app.sendGroupMessage(self.group, MessageChain.create([
+                await self.app.send_group_message(self.group, MessageChain([
                     Plain(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {config.BOT_NAME} 好友，用于发送题目")
                 ]))
                 MEMBER_RUNING_LIST.remove(self.member.id)
@@ -792,13 +792,13 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                               confirm_source: Source):
                 if all([confirm_group.id == self.group.id,
                         confirm_member.id == self.member.id]):
-                    saying = confirm_message.asDisplay()
+                    saying = confirm_message.display
                     if saying == "是":
                         return True
                     elif saying == "否":
                         return False
                     else:
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        await self.app.send_group_message(self.group, MessageChain([
                             At(confirm_member.id),
                             Plain("请发送是或否来进行确认")
                         ]), quote=confirm_source)
@@ -811,7 +811,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 _owner = group_id["owner"]
                 _question = group_id["question"].upper()
                 _question_len = len(_question)
-                saying = submit_answer_message.asDisplay().upper()
+                saying = submit_answer_message.display.upper()
                 saying_len = len(saying)
 
                 if all([submit_answer_member.id == _owner, saying in ["终止", "取消", "结束"]]):
@@ -827,7 +827,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                         if saying == _question:
                             return [submit_answer_member, submit_answer_source]
                     elif group_id["player"][submit_answer_member.id] == 9:
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        await self.app.send_group_message(self.group, MessageChain([
                             At(submit_answer_member.id),
                             Plain("你的本回合答题机会已用尽")
                         ]), quote=submit_answer_source)
@@ -835,14 +835,14 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             # 如果当前群有一个正在进行中的游戏
             if self.group.id in GROUP_RUNING_LIST:
                 if self.group.id not in GROUP_GAME_PROCESS:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    await self.app.send_group_message(self.group, MessageChain([
                         At(self.member.id),
                         Plain(" 本群正在请求确认开启一场游戏，请稍候")
                     ]), quote=self.source)
                 else:
                     owner = GROUP_GAME_PROCESS[self.group.id]["owner"]
-                    owner_name = (await self.app.getMember(self.group, owner)).name
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    owner_name = (await self.app.get_member(self.group, owner)).name
+                    await self.app.send_group_message(self.group, MessageChain([
                         At(self.member.id),
                         Plain(" 本群存在一场已经开始的游戏，请等待当前游戏结束"),
                         Plain(f"\n发起者：{str(owner)} | {owner_name}")
@@ -851,11 +851,11 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             else:
                 GROUP_RUNING_LIST.append(self.group.id)
                 try:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    await self.app.send_group_message(self.group, MessageChain([
                         Plain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
                     ]), quote=self.source)
                 except UnknownTarget:
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    await self.app.send_group_message(self.group, MessageChain([
                         At(self.member.id),
                         Plain(f" 是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}")
                     ]))
@@ -871,14 +871,14 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                         if await BotGame(str(self.member.id)).get_coins() < 4:
                             GROUP_RUNING_LIST.remove(self.group.id)
                             del GROUP_GAME_PROCESS[self.group.id]
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 At(self.member.id),
                                 Plain(f" 你的{config.COIN_NAME}不足，无法开始游戏")]))
                             return
                         else:
                             await BotGame(str(self.member.id)).update_coin(-4)
                             question_len = len(question)
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"本次题目为 {question_len} 个字，请等待 "),
                                 At(self.member.id),
                                 Plain(" 在群中绘图"),
@@ -886,7 +886,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                                 Plain("\n每人每回合只有 8 次答题机会，请勿刷屏请勿抢答。")
                             ]), quote=self.source)
                             await asyncio.sleep(1)
-                            await self.app.sendFriendMessage(self.member.id, MessageChain.create([
+                            await self.app.send_friend_message(self.member.id, MessageChain([
                                 Plain(f"本次的题目为：{question}，请在一分钟内\n在群中\n在群中\n在群中\n发送涂鸦或其他形式等来表示该主题")
                             ]))
 
@@ -898,7 +898,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                                 await BotGame(str(result[0].id)).update_coin(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
-                                await self.app.sendGroupMessage(self.group.id, MessageChain.create([
+                                await self.app.send_group_message(self.group.id, MessageChain([
                                     Plain("恭喜 "),
                                     At(result[0].id),
                                     Plain(f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{config.COIN_NAME}，本次游戏结束")
@@ -908,7 +908,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                                 await BotGame(owner).update_coin(1)
                                 GROUP_RUNING_LIST.remove(self.group.id)
                                 del GROUP_GAME_PROCESS[self.group.id]
-                                await self.app.sendGroupMessage(self.group, MessageChain.create([
+                                await self.app.send_group_message(self.group, MessageChain([
                                     Plain(f"本次你画我猜已终止，将返还创建者 1 点{config.COIN_NAME}")
                                 ]))
                         except asyncio.TimeoutError:
@@ -917,7 +917,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             await BotGame(owner).update_coin(1)
                             GROUP_RUNING_LIST.remove(self.group.id)
                             del GROUP_GAME_PROCESS[self.group.id]
-                            await self.app.sendGroupMessage(self.group, MessageChain.create([
+                            await self.app.send_group_message(self.group, MessageChain([
                                 Plain(f"由于长时间没有人回答出正确答案，将返还创建者 1 点{config.COIN_NAME}，本次你画我猜已结束"),
                                 Plain(f"\n本次的答案为：{question}")
                             ]))
@@ -925,13 +925,13 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     # 终止创建流程
                     else:
                         GROUP_RUNING_LIST.remove(self.group.id)
-                        await self.app.sendGroupMessage(self.group, MessageChain.create([
+                        await self.app.send_group_message(self.group, MessageChain([
                             Plain("已取消")
                         ]))
                 # 如果 15 秒内无响应
                 except asyncio.TimeoutError:
                     GROUP_RUNING_LIST.remove(self.group.id)
-                    await self.app.sendGroupMessage(self.group, MessageChain.create([
+                    await self.app.send_group_message(self.group, MessageChain([
                         Plain("确认超时")
                     ]))
 
@@ -942,12 +942,12 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 runlist_len = len(GROUP_RUNING_LIST)
                 runlist_str = "\n".join(map(lambda x: str(x), GROUP_RUNING_LIST))
                 if runlist_len > 0:
-                    await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
+                    await self.app.send_friend_message(config.MASTER_QQ, MessageChain([
                         Plain(f"当前共有 {runlist_len} 个群正在玩你画我猜"),
                         Plain(f"\n{runlist_str}")
                     ]))
                 else:
-                    await self.app.sendFriendMessage(config.MASTER_QQ, MessageChain.create([
+                    await self.app.send_friend_message(config.MASTER_QQ, MessageChain([
                         Plain(f"当前没有正在运行你画我猜的群")
                     ]))
         return self.args_error()

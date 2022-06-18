@@ -45,10 +45,10 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             waiter1_group: Group, waiter1_member: Member, waiter1_message: MessageChain
     ):
         if waiter1_group.id == self.group.id:
-            if waiter1_message.asDisplay() == "加入赛马":
+            if waiter1_message.display == "加入赛马":
                 if waiter1_member.id in GROUP_GAME_PROCESS[self.group.id]["members"]:
                     await safeSendGroupMessage(
-                        self.group, MessageChain.create("你已经参与了本轮游戏，请不要重复加入")
+                        self.group, MessageChain("你已经参与了本轮游戏，请不要重复加入")
                     )
                 else:
                     if await BotGame(waiter1_member.id).reduce_coin(5):
@@ -65,7 +65,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             add_msg = ""
                         await safeSendGroupMessage(
                             self.group,
-                            MessageChain.create(
+                            MessageChain(
                                 At(waiter1_member.id),
                                 Plain(
                                     f" 你已成功加入本轮游戏，当前共有 {waiter1_player_count} / 6 人参与{add_msg}"
@@ -77,9 +77,9 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             return True
                     else:
                         await safeSendGroupMessage(
-                            self.group, MessageChain.create(f"你的{config.COIN_NAME}不足，无法参加游戏")
+                            self.group, MessageChain(f"你的{config.COIN_NAME}不足，无法参加游戏")
                         )
-            elif waiter1_message.asDisplay() == "退出赛马":
+            elif waiter1_message.display == "退出赛马":
                 if waiter1_member.id == self.member.id:
                     for waiter1_player in GROUP_GAME_PROCESS[self.group.id]["members"]:
                         await BotGame(waiter1_player).update_coin(5)
@@ -87,7 +87,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     GROUP_RUNING_LIST.remove(self.group.id)
                     del GROUP_GAME_PROCESS[self.group.id]
                     await safeSendGroupMessage(
-                        self.group, MessageChain.create("由于您是房主，本场房间已解散")
+                        self.group, MessageChain("由于您是房主，本场房间已解散")
                     )
                     return False
                 elif waiter1_member.id in GROUP_GAME_PROCESS[self.group.id]["members"]:
@@ -100,21 +100,21 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                         GROUP_GAME_PROCESS[self.group.id]["status"] = "waiting"
                     await safeSendGroupMessage(
                         self.group,
-                        MessageChain.create(
+                        MessageChain(
                             At(waiter1_member.id),
                             Plain(f" 你已退出本轮游戏，当前共有 {waiter1_player_count} / 6 人参与"),
                         ),
                     )
                 else:
                     await safeSendGroupMessage(
-                        self.group, MessageChain.create("你未参与本场游戏，无法退出")
+                        self.group, MessageChain("你未参与本场游戏，无法退出")
                     )
-            elif waiter1_message.asDisplay() == "提前开始":
+            elif waiter1_message.display == "提前开始":
                 if waiter1_member.id == self.member.id:
                     if GROUP_GAME_PROCESS[self.group.id]["status"] == "pre_start":
                         await safeSendGroupMessage(
                             self.group,
-                            MessageChain.create(
+                            MessageChain(
                                 At(waiter1_member.id),
                                 Plain(" 已强制开始本场游戏"),
                             ),
@@ -124,7 +124,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     else:
                         await safeSendGroupMessage(
                             self.group,
-                            MessageChain.create(
+                            MessageChain(
                                 At(waiter1_member.id),
                                 Plain(" 当前游戏人数不足，无法强制开始"),
                             ),
@@ -132,7 +132,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 else:
                     await safeSendGroupMessage(
                         self.group,
-                        MessageChain.create(
+                        MessageChain(
                             At(waiter1_member.id),
                             Plain(" 你不是本轮游戏的发起者，无法强制开始本场游戏"),
                         ),
@@ -142,24 +142,24 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
         return await self.print_help(alc.get_help())
     try:
         if not hasattr(self, 'group'):
-            return MessageChain.create([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
+            return MessageChain([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
         if command.find('start'):
             if self.group.id in GROUP_RUNING_LIST:
                 if GROUP_GAME_PROCESS[self.group.id]["status"] != "running":
                     return await safeSendGroupMessage(
                         self.group,
-                        MessageChain.create(
+                        MessageChain(
                             At(self.member.id),
                             " 本轮游戏已经开始，请等待其他人结束后再开始新的一局",
                         ),
                     )
                 else:
                     return await safeSendGroupMessage(
-                        self.group, MessageChain.create(At(self.member.id), " 本群的游戏还未开始，请输入“加入赛马”参与游戏")
+                        self.group, MessageChain(At(self.member.id), " 本群的游戏还未开始，请输入“加入赛马”参与游戏")
                     )
             elif self.member.id in MEMBER_RUNING_LIST:
                 return await safeSendGroupMessage(
-                    self.group, MessageChain.create(" 你已经参与了其他群的游戏，请等待游戏结束")
+                    self.group, MessageChain(" 你已经参与了其他群的游戏，请等待游戏结束")
                 )
 
             if await BotGame(self.member.id).reduce_coin(5):
@@ -170,11 +170,11 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     "members": [self.member.id],
                 }
                 await safeSendGroupMessage(
-                    self.group, MessageChain.create("赛马小游戏开启成功，正在等待其他群成员加入，发送“加入赛马”参与游戏")
+                    self.group, MessageChain("赛马小游戏开启成功，正在等待其他群成员加入，发送“加入赛马”参与游戏")
                 )
             else:
                 return await safeSendGroupMessage(
-                    self.group, MessageChain.create(f"你的{config.COIN_NAME}不足，无法开始游戏")
+                    self.group, MessageChain(f"你的{config.COIN_NAME}不足，无法开始游戏")
                 )
 
             try:
@@ -190,7 +190,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 MEMBER_RUNING_LIST.remove(self.member.id)
                 GROUP_RUNING_LIST.remove(self.group.id)
                 del GROUP_GAME_PROCESS[self.group.id]
-                return await safeSendGroupMessage(self.group, MessageChain.create("等待玩家加入超时，请重新开始"))
+                return await safeSendGroupMessage(self.group, MessageChain("等待玩家加入超时，请重新开始"))
 
             await asyncio.sleep(2)
             # 开始游戏
@@ -201,7 +201,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     player: {
                         "horse": i,
                         "score": 0,
-                        "name": (await self.app.getMember(self.group.id, player)).name,
+                        "name": (await self.app.get_member(self.group.id, player)).name,
                     }
                     for i, player in enumerate(player_list, 1)
                 },
@@ -247,14 +247,14 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             )
             await safeSendGroupMessage(
                 self.group,
-                MessageChain.create([Image(data_bytes=image.getvalue())]),
+                MessageChain([Image(data_bytes=image.getvalue())]),
             )
             player_count = len(game_data["player"])
             gold_count = (player_count * 5) - player_count
             await asyncio.sleep(15)
             await safeSendGroupMessage(
                 self.group,
-                MessageChain.create([
+                MessageChain([
                     Plain("游戏结束，获胜者是："),
                     At(game_data["winer"]),
                     Plain(f"已获得 {gold_count} {config.COIN_NAME}")

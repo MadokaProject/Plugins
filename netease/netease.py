@@ -47,11 +47,11 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
     try:
         if qd := components.get('qd'):
             if not hasattr(self, 'friend'):
-                return MessageChain.create([Plain('请私聊使用该命令!')])
+                return MessageChain([Plain('请私聊使用该命令!')])
             await NetEase_process_event(self.friend.id, qd['phone'], qd['password'])
         elif add := components.get('add'):
             if not hasattr(self, 'friend'):
-                return MessageChain.create([Plain('请私聊使用该命令!')])
+                return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
                 if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [add['phone']]):
                     if not db.update(
@@ -59,29 +59,29 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             [self.friend.id, add['phone'], add['password']]
                     ):
                         raise Exception()
-                    return MessageChain.create([Plain('添加成功')])
+                    return MessageChain([Plain('添加成功')])
                 else:
-                    return MessageChain.create([Plain('该账号已存在！')])
+                    return MessageChain([Plain('该账号已存在！')])
         elif remove := components.get('remove'):
             if not hasattr(self, 'friend'):
-                return MessageChain.create([Plain('请私聊使用该命令!')])
+                return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
                 if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
                             [self.friend.id, remove['phone']]):
                     if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
                                  [self.friend.id, remove['phone']]):
-                        return MessageChain.create([Plain('移除成功！')])
+                        return MessageChain([Plain('移除成功！')])
                 else:
-                    return MessageChain.create([Plain('该账号不存在！')])
+                    return MessageChain([Plain('该账号不存在！')])
         elif command.find('list'):
             if not hasattr(self, 'friend'):
-                return MessageChain.create([Plain('请私聊使用该命令!')])
+                return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
                 res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
-                return MessageChain.create([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
+                return MessageChain([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
         elif command.find('rp'):
             req = await general_request('https://v.api.aa1.cn/api/api-wenan-wangyiyunreping/index.php?aa1=text', 'GET')
-            return MessageChain.create(req.strip('<p>').strip('</p>'))
+            return MessageChain(req.strip('<p>').strip('</p>'))
         else:
             return self.args_error()
     except Exception as e:
@@ -96,7 +96,7 @@ async def tasker():
             'SELECT qid, phone, pwd FROM Plugin_NetEase_Account'
         )
         for (qid, phone, pwd) in accounts:
-            await app.sendFriendMessage(int(qid), MessageChain.create([
+            await app.send_friend_message(int(qid), MessageChain([
                 Plain("正在进行账号" + phone + "的自动签到任务\r\n下次运行时间为：8:00")
             ]))
             await NetEase_process_event(int(qid), phone, pwd)
@@ -156,11 +156,11 @@ async def NetEase_process_event(qid, phone, pwd):
     temp_cookie = res.cookies
     object = json.loads(res.text)
     if object['code'] == 200:
-        await app.sendFriendMessage(qid, MessageChain.create([
+        await app.send_friend_message(qid, MessageChain([
             Plain(phone + "：登录成功！")
         ]))
     else:
-        await app.sendFriendMessage(qid, MessageChain.create([
+        await app.send_friend_message(qid, MessageChain([
             Plain(phone + "：登录失败！请检查密码是否正确！" + str(object['code']))
         ]))
         return object['code']
@@ -168,16 +168,16 @@ async def NetEase_process_event(qid, phone, pwd):
     res = s.post(url=url2, data=protect('{"type":0}'), headers=headers)
     object = json.loads(res.text)
     if object['code'] != 200 and object['code'] != -2:
-        await app.sendFriendMessage(qid, MessageChain.create([
+        await app.send_friend_message(qid, MessageChain([
             Plain(phone + "：签到时发生错误：" + object['msg'])
         ]))
     else:
         if object['code'] == 200:
-            await app.sendFriendMessage(qid, MessageChain.create([
+            await app.send_friend_message(qid, MessageChain([
                 Plain(phone + "：签到成功，经验+" + str(object['point']))
             ]))
         else:
-            await app.sendFriendMessage(qid, MessageChain.create([
+            await app.send_friend_message(qid, MessageChain([
                 Plain(phone + "：重复签到")
             ]))
 
@@ -221,12 +221,12 @@ async def NetEase_process_event(qid, phone, pwd):
     res = s.post(url, protect(json.dumps(postdata)))
     object = json.loads(res.text, strict=False)
     if object['code'] == 200:
-        await app.sendFriendMessage(qid, MessageChain.create([
+        await app.send_friend_message(qid, MessageChain([
             Plain(phone + "：刷单成功！共" + str(count) + "首")
         ]))
         return
     else:
-        await app.sendFriendMessage(qid, MessageChain.create([
+        await app.send_friend_message(qid, MessageChain([
             Plain(phone + "：发生错误：" + str(object['code']) + object['message'])
         ]))
         return object['code']

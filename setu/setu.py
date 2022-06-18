@@ -54,7 +54,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     if not CONFIG.__contains__(str(self.group.id)):
                         CONFIG.update({str(self.group.id): {}})
                     CONFIG[str(self.group.id)].update({'setu_R18': r18['r18']})
-                    return MessageChain.create([Plain('设置成功！')])
+                    return MessageChain([Plain('设置成功！')])
         else:
             # 判断积分是否足够，如果无，要求报错并返回
             the_one = BotGame((getattr(self, 'friend', None) or getattr(self, 'member', None)).id)
@@ -74,11 +74,11 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
             )
             if response['data']:
                 await the_one.update_coin(-num['normal']['c'])
-                return MessageChain.create([
+                return MessageChain([
                     Image(url=response['data'][0]['urls']['original'].replace('i.pixiv.cat', 'pixiv.a-f.workers.dev'))
                 ])
             else:
-                return MessageChain.create([Plain('setu: 获取失败')])
+                return MessageChain([Plain('setu: 获取失败')])
     except Exception as e:
         logger.exception(e)
         return self.unkown_error()
