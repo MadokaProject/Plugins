@@ -17,7 +17,7 @@ from app.core.database import InitDB
 from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.text2image import create_image
-from .chaoxing_res.sign import AutoSign
+from .sign import AutoSign
 
 core: AppCore = AppCore.get_core_instance()
 sche: GraiaScheduler = core.get_scheduler()
