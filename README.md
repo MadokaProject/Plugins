@@ -57,7 +57,7 @@ Madoka 插件中心
         "author": "example_author",
         "version": "0.0.1",
         "pypi": true,
-        "readme": "演示如何创建/贡献一个新的插件"
+        "description": "演示如何创建/贡献一个新的插件"
     },
     ...
 ]
