@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 import random
 
 from arclet.alconna import Alconna, Subcommand, Arpamar
@@ -11,6 +10,7 @@ from graia.ariadne.model import Group, Member
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 from prettytable import PrettyTable
+from pathlib import Path
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
@@ -284,8 +284,8 @@ async def update_english_test():
             return text
 
         try:
-            for filename in os.listdir("app/plugin/extension/EnglishTest_res/worddict"):
-                with open("app/plugin/extension/EnglishTest_res/worddict/" + filename, 'r', encoding='utf-8') as f:
+            for file in Path(__file__).parent.joinpath('worddict').glob('*.json'):
+                with open(file, 'r', encoding='utf-8') as f:
                     for line in f.readlines():
                         words = line.strip()
                         word_json = json.loads(words)

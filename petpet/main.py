@@ -11,7 +11,7 @@ from loguru import logger
 from app.core.commander import CommandDelegateManager
 from app.plugin.base import Plugin
 
-FRAMES_PATH = Path(__file__).parent.joinpath("petpet_res/PetPetFrames")
+FRAMES_PATH = Path(__file__).parent.joinpath("PetPetFrames")
 
 manager: CommandDelegateManager = CommandDelegateManager.get_instance()
 
