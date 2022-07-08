@@ -1,31 +1,30 @@
 import asyncio
 import random
 from io import BytesIO
-from pathlib import Path
+from typing import Union
 
 from PIL import Image as IMG, ImageDraw, ImageFont
 from arclet.alconna import Alconna, Subcommand, Arpamar
+from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Plain, At, Image
-from graia.ariadne.model import Group, Member
+from graia.ariadne.message.element import At
+from graia.ariadne.model import Group, Member, Friend
+from graia.broadcast.interrupt import InterruptControl
 from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 
-from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.core.config import Config
 from app.core.settings import *
 from app.entities.game import BotGame
-from app.plugin.base import Plugin
+from app.util.phrases import *
 from app.util.send_message import safeSendGroupMessage
-from app.util.tools import to_thread
+from app.util.tools import to_thread, app_path
 
-FONT_PATH = Path("./app/resource/font")
+FONT_PATH = app_path().joinpath('resource/font')
 font24 = ImageFont.truetype(str(FONT_PATH.joinpath("sarasa-mono-sc-semibold.ttf")), 24)
 
-config: Config = AppCore.get_core_instance().get_config()
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+config: Config = Config()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -39,32 +38,33 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         ],
         help_text='赛马小游戏'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
-    @Waiter.create_using_function([GroupMessage])
+async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar,
+                  alc: Alconna, inc: InterruptControl):
+    @Waiter.create([GroupMessage])
     async def waiter1(
             waiter1_group: Group, waiter1_member: Member, waiter1_message: MessageChain
     ):
-        if waiter1_group.id == self.group.id:
+        if waiter1_group.id == sender.id:
             if waiter1_message.display == "加入赛马":
-                if waiter1_member.id in GROUP_GAME_PROCESS[self.group.id]["members"]:
+                if waiter1_member.id in GROUP_GAME_PROCESS[sender.id]["members"]:
                     await safeSendGroupMessage(
-                        self.group, MessageChain("你已经参与了本轮游戏，请不要重复加入")
+                        sender, MessageChain("你已经参与了本轮游戏，请不要重复加入")
                     )
                 else:
                     if await BotGame(waiter1_member.id).reduce_coin(5):
-                        GROUP_GAME_PROCESS[self.group.id]["members"].append(
+                        GROUP_GAME_PROCESS[sender.id]["members"].append(
                             waiter1_member.id
                         )
-                        waiter1_player_list = GROUP_GAME_PROCESS[self.group.id]["members"]
+                        waiter1_player_list = GROUP_GAME_PROCESS[sender.id]["members"]
                         waiter1_player_count = len(waiter1_player_list)
                         if 6 > waiter1_player_count > 1:
-                            GROUP_GAME_PROCESS[self.group.id]["status"] = "pre_start"
+                            GROUP_GAME_PROCESS[sender.id]["status"] = "pre_start"
                             add_msg = "，发起者可发送“提前开始”来强制开始本场游戏"
                         else:
-                            GROUP_GAME_PROCESS[self.group.id]["status"] = "waiting"
+                            GROUP_GAME_PROCESS[sender.id]["status"] = "waiting"
                             add_msg = ""
                         await safeSendGroupMessage(
-                            self.group,
+                            sender,
                             MessageChain(
                                 At(waiter1_member.id),
                                 Plain(
@@ -73,33 +73,33 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                             ),
                         )
                         if waiter1_player_count == 6:
-                            GROUP_GAME_PROCESS[self.group.id]["status"] = "running"
+                            GROUP_GAME_PROCESS[sender.id]["status"] = "running"
                             return True
                     else:
                         await safeSendGroupMessage(
-                            self.group, MessageChain(f"你的{config.COIN_NAME}不足，无法参加游戏")
+                            sender, MessageChain(f"你的{config.COIN_NAME}不足，无法参加游戏")
                         )
             elif waiter1_message.display == "退出赛马":
-                if waiter1_member.id == self.member.id:
-                    for waiter1_player in GROUP_GAME_PROCESS[self.group.id]["members"]:
+                if waiter1_member.id == target.id:
+                    for waiter1_player in GROUP_GAME_PROCESS[sender.id]["members"]:
                         await BotGame(waiter1_player).update_coin(5)
-                    MEMBER_RUNING_LIST.remove(self.member.id)
-                    GROUP_RUNING_LIST.remove(self.group.id)
-                    del GROUP_GAME_PROCESS[self.group.id]
+                    MEMBER_RUNING_LIST.remove(target.id)
+                    GROUP_RUNING_LIST.remove(sender.id)
+                    del GROUP_GAME_PROCESS[sender.id]
                     await safeSendGroupMessage(
-                        self.group, MessageChain("由于您是房主，本场房间已解散")
+                        sender, MessageChain("由于您是房主，本场房间已解散")
                     )
                     return False
-                elif waiter1_member.id in GROUP_GAME_PROCESS[self.group.id]["members"]:
-                    GROUP_GAME_PROCESS[self.group.id]["members"].remove(waiter1_member.id)
-                    waiter1_player_list = GROUP_GAME_PROCESS[self.group.id]["members"]
+                elif waiter1_member.id in GROUP_GAME_PROCESS[sender.id]["members"]:
+                    GROUP_GAME_PROCESS[sender.id]["members"].remove(waiter1_member.id)
+                    waiter1_player_list = GROUP_GAME_PROCESS[sender.id]["members"]
                     waiter1_player_count = len(waiter1_player_list)
                     if 6 > waiter1_player_count > 1:
-                        GROUP_GAME_PROCESS[self.group.id]["status"] = "pre_start"
+                        GROUP_GAME_PROCESS[sender.id]["status"] = "pre_start"
                     else:
-                        GROUP_GAME_PROCESS[self.group.id]["status"] = "waiting"
+                        GROUP_GAME_PROCESS[sender.id]["status"] = "waiting"
                     await safeSendGroupMessage(
-                        self.group,
+                        sender,
                         MessageChain(
                             At(waiter1_member.id),
                             Plain(f" 你已退出本轮游戏，当前共有 {waiter1_player_count} / 6 人参与"),
@@ -107,23 +107,23 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     )
                 else:
                     await safeSendGroupMessage(
-                        self.group, MessageChain("你未参与本场游戏，无法退出")
+                        sender, MessageChain("你未参与本场游戏，无法退出")
                     )
             elif waiter1_message.display == "提前开始":
-                if waiter1_member.id == self.member.id:
-                    if GROUP_GAME_PROCESS[self.group.id]["status"] == "pre_start":
+                if waiter1_member.id == target.id:
+                    if GROUP_GAME_PROCESS[sender.id]["status"] == "pre_start":
                         await safeSendGroupMessage(
-                            self.group,
+                            sender,
                             MessageChain(
                                 At(waiter1_member.id),
                                 Plain(" 已强制开始本场游戏"),
                             ),
                         )
-                        GROUP_GAME_PROCESS[self.group.id]["status"] = "running"
+                        GROUP_GAME_PROCESS[sender.id]["status"] = "running"
                         return True
                     else:
                         await safeSendGroupMessage(
-                            self.group,
+                            sender,
                             MessageChain(
                                 At(waiter1_member.id),
                                 Plain(" 当前游戏人数不足，无法强制开始"),
@@ -131,7 +131,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                         )
                 else:
                     await safeSendGroupMessage(
-                        self.group,
+                        sender,
                         MessageChain(
                             At(waiter1_member.id),
                             Plain(" 你不是本轮游戏的发起者，无法强制开始本场游戏"),
@@ -139,69 +139,69 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                     )
 
     if not command.subcommands:
-        return await self.print_help(alc.get_help())
+        return await print_help(alc.get_help())
     try:
-        if not hasattr(self, 'group'):
-            return MessageChain([Plain('独乐乐不如众乐乐，还是在群里和大家一起玩吧！')])
+        if not isinstance(sender, Group):
+            return MessageChain([Plain('请在群聊中使用本命令')])
         if command.find('start'):
-            if self.group.id in GROUP_RUNING_LIST:
-                if GROUP_GAME_PROCESS[self.group.id]["status"] != "running":
+            if sender.id in GROUP_RUNING_LIST:
+                if GROUP_GAME_PROCESS[sender.id]["status"] != "running":
                     return await safeSendGroupMessage(
-                        self.group,
+                        sender,
                         MessageChain(
-                            At(self.member.id),
+                            At(target),
                             " 本轮游戏已经开始，请等待其他人结束后再开始新的一局",
                         ),
                     )
                 else:
                     return await safeSendGroupMessage(
-                        self.group, MessageChain(At(self.member.id), " 本群的游戏还未开始，请输入“加入赛马”参与游戏")
+                        sender, MessageChain(At(target), " 本群的游戏还未开始，请输入“加入赛马”参与游戏")
                     )
-            elif self.member.id in MEMBER_RUNING_LIST:
+            elif target.id in MEMBER_RUNING_LIST:
                 return await safeSendGroupMessage(
-                    self.group, MessageChain(" 你已经参与了其他群的游戏，请等待游戏结束")
+                    sender, MessageChain(" 你已经参与了其他群的游戏，请等待游戏结束")
                 )
 
-            if await BotGame(self.member.id).reduce_coin(5):
-                MEMBER_RUNING_LIST.append(self.member.id)
-                GROUP_RUNING_LIST.append(self.group.id)
-                GROUP_GAME_PROCESS[self.group.id] = {
+            if await BotGame(target.id).reduce_coin(5):
+                MEMBER_RUNING_LIST.append(target.id)
+                GROUP_RUNING_LIST.append(sender.id)
+                GROUP_GAME_PROCESS[sender.id] = {
                     "status": "waiting",
-                    "members": [self.member.id],
+                    "members": [target.id],
                 }
                 await safeSendGroupMessage(
-                    self.group, MessageChain("赛马小游戏开启成功，正在等待其他群成员加入，发送“加入赛马”参与游戏")
+                    sender, MessageChain("赛马小游戏开启成功，正在等待其他群成员加入，发送“加入赛马”参与游戏")
                 )
             else:
                 return await safeSendGroupMessage(
-                    self.group, MessageChain(f"你的{config.COIN_NAME}不足，无法开始游戏")
+                    sender, MessageChain(f"你的{config.COIN_NAME}不足，无法开始游戏")
                 )
 
             try:
-                result = await asyncio.wait_for(self.inc.wait(waiter1), timeout=120)
+                result = await inc.wait(waiter1, timeout=120)
                 if result:
-                    GROUP_GAME_PROCESS[self.group.id]["status"] = "running"
+                    GROUP_GAME_PROCESS[sender.id]["status"] = "running"
                 else:
                     return
 
             except asyncio.TimeoutError:
-                for player in GROUP_GAME_PROCESS[self.group.id]["members"]:
+                for player in GROUP_GAME_PROCESS[sender.id]["members"]:
                     await BotGame(player).update_coin(5)
-                MEMBER_RUNING_LIST.remove(self.member.id)
-                GROUP_RUNING_LIST.remove(self.group.id)
-                del GROUP_GAME_PROCESS[self.group.id]
-                return await safeSendGroupMessage(self.group, MessageChain("等待玩家加入超时，请重新开始"))
+                MEMBER_RUNING_LIST.remove(target.id)
+                GROUP_RUNING_LIST.remove(sender.id)
+                del GROUP_GAME_PROCESS[sender.id]
+                return await safeSendGroupMessage(sender, MessageChain("等待玩家加入超时，请重新开始"))
 
             await asyncio.sleep(2)
             # 开始游戏
-            player_list = GROUP_GAME_PROCESS[self.group.id]["members"]
+            player_list = GROUP_GAME_PROCESS[sender.id]["members"]
             random.shuffle(player_list)
             game_data = {
                 "player": {
                     player: {
                         "horse": i,
                         "score": 0,
-                        "name": (await self.app.get_member(self.group.id, player)).name,
+                        "name": (await app.get_member(sender.id, player)).name,
                     }
                     for i, player in enumerate(player_list, 1)
                 },
@@ -246,31 +246,31 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 optimize=False
             )
             await safeSendGroupMessage(
-                self.group,
+                sender,
                 MessageChain([Image(data_bytes=image.getvalue())]),
             )
             player_count = len(game_data["player"])
             gold_count = (player_count * 5) - player_count
             await asyncio.sleep(15)
             await safeSendGroupMessage(
-                self.group,
+                sender,
                 MessageChain([
                     Plain("游戏结束，获胜者是："),
                     At(game_data["winer"]),
                     Plain(f"已获得 {gold_count} {config.COIN_NAME}")
                 ]))
             await BotGame(game_data["winer"]).update_coin(gold_count)
-            MEMBER_RUNING_LIST.remove(self.member.id)
-            GROUP_RUNING_LIST.remove(self.group.id)
-            del GROUP_GAME_PROCESS[self.group.id]
+            MEMBER_RUNING_LIST.remove(target.id)
+            GROUP_RUNING_LIST.remove(sender.id)
+            del GROUP_GAME_PROCESS[sender.id]
         else:
-            return self.args_error()
+            return args_error()
     except AssertionError as e:
         logger.exception(e)
-        return self.args_error()
+        return args_error()
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
 
 
 def draw_game(data):

@@ -4,16 +4,15 @@ from pathlib import Path
 import httpx
 from PIL import Image as IMG, ImageOps
 from arclet.alconna import Alconna, Args, Arpamar
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Image
+from graia.ariadne.message.element import At
 from loguru import logger
 
 from app.core.commander import CommandDelegateManager
-from app.plugin.base import Plugin
+from app.util.phrases import *
 
 FRAMES_PATH = Path(__file__).parent.joinpath("PetPetFrames")
 
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -25,12 +24,12 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         main_args=Args['qq', At],
         help_text='摸摸'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
+async def process(command: Arpamar):
     try:
-        return MessageChain([Image(data_bytes=await petpet(command.query('qq').target))])
+        return MessageChain([Image(data_bytes=await pet(command.query('qq').target))])
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
 
 
 frame_spec = [
@@ -79,7 +78,7 @@ async def make_frame(avatar, i, squish=0, flip=False):
     return gif_frame
 
 
-async def petpet(member_id, flip=False, squish=0) -> bytes:
+async def pet(member_id, flip=False, squish=0) -> bytes:
     url = f"http://q1.qlogo.cn/g?b=qq&nk={str(member_id)}&s=640"
     gif_frames = []
     async with httpx.AsyncClient() as client:

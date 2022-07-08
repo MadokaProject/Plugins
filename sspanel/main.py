@@ -1,24 +1,25 @@
+from typing import Union
+
 import requests
 from arclet.alconna import Alconna, Args, Subcommand, Arpamar
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend, Member, Group
 from graia.scheduler import GraiaScheduler, timers
 from loguru import logger
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
 from app.core.database import InitDB
-from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
+from app.util.phrases import *
 
 requests.packages.urllib3.disable_warnings()
 
-core: AppCore = AppCore.get_core_instance()
+core: AppCore = AppCore()
 app: Ariadne = core.get_app()
 sche: GraiaScheduler = core.get_scheduler()
-database: InitDB = InitDB.get_instance()
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+database: InitDB = InitDB()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -35,12 +36,12 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         ],
         help_text='机场签到: 为保证账号安全, 该服务仅私发有效'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
+async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar, alc: Alconna):
     subcommand = command.subcommands
     if not subcommand:
-        return await self.print_help(alc.get_help())
+        return await print_help(alc.get_help())
     try:
-        if not hasattr(self, 'friend'):
+        if not isinstance(sender, Friend):
             return MessageChain([Plain('请私聊使用该命令!')])
         if qd := subcommand.get('qd'):
             account = {0: {
@@ -58,7 +59,7 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 return MessageChain([
                     Plain('添加/修改成功！' if db.update(
                         'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
-                        [self.friend.id, add['host'], add['email'], add['password']]
+                        [target.id, add['host'], add['email'], add['password']]
                     ) else '添加/修改失败！')
                 ])
         elif remove := subcommand.get('remove'):
@@ -66,22 +67,22 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 return MessageChain([
                     Plain('删除成功！' if db.update(
                         'DELETE FROM plugin_sspanel_account WHERE qid=%s and web=%s and user=%s',
-                        [self.friend.id, remove['host'], remove['email']]
+                        [target.id, remove['host'], remove['email']]
                     ) else '删除失败！')
                 ])
         elif command.find('list'):
             with MysqlDao() as db:
                 res = db.query(
                     'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',
-                    [self.friend.id]
+                    [target.id]
                 )
                 return MessageChain([
                     Plain('\n'.join(f'{index}: {web}\t{user}' for index, (web, user) in enumerate(res)))
                 ])
-        return self.args_error()
+        return args_error()
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
 
 
 @sche.schedule(timers.crontabify('0 8 * * * 0'))

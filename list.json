@@ -1,74 +1,74 @@
 [
-    {
-        "name": "背单词",
-        "root_dir": "english_test",
-        "author": "MadokaProject",
-        "version": "0.0.6",
-        "pypi": false,
-        "description": "和群友一起背单词并赚取金币吧！"
-    },
-    {
-        "name": "词云",
-        "root_dir": "word_cloud",
-        "author": "MadokaProject",
-        "version": "0.0.5",
-        "pypi": true,
-        "description": "生成聊天词云"
-    },
-    {
-        "name": "机场签到",
-        "root_dir": "sspanel",
-        "author": "MadokaProject",
-        "version": "0.0.5",
-        "pypi": true,
-        "description": "签到获取流量"
-    },
-    {
-        "name": "摸摸",
-        "root_dir": "petpet",
-        "author": "MadokaProject",
-        "version": "0.0.5",
-        "pypi": false,
-        "description": ""
-    },
-    {
-        "name": "你画我猜",
-        "root_dir": "draw_something",
-        "author": "MadokaProject",
-        "version": "0.0.4",
-        "pypi": false,
-        "description": "你画我猜小游戏"
-    },
-    {
-        "name": "赛马",
-        "root_dir": "horse_racing",
-        "author": "MadokaProject",
-        "version": "0.0.5",
-        "pypi": false,
-        "description": "赛马小游戏"
-    },
-    {
-        "name": "涩图",
-        "root_dir": "setu",
-        "author": "MadokaProject",
-        "version": "0.0.4",
-        "pypi": false,
-        "description": "慎用"
-    },
-    {
-        "name": "网易云音乐",
-        "root_dir": "netease",
-        "author": "MadokaProject",
-        "version": "0.0.5",
-        "pypi": true,
-        "description": ""
-    },
-    {
-        "name": "学习通",
-        "root_dir": "chaoxing",
-        "author": "Colsrch",
-        "version": "0.0.4",
-        "pypi": true,
-        "description": ""
-    }
+  {
+    "name": "背单词",
+    "root_dir": "english_test",
+    "author": "MadokaProject",
+    "version": "0.0.7",
+    "pypi": false,
+    "description": "和群友一起背单词并赚取金币吧！"
+  },
+  {
+    "name": "词云",
+    "root_dir": "word_cloud",
+    "author": "MadokaProject",
+    "version": "0.0.6",
+    "pypi": true,
+    "description": "生成聊天词云"
+  },
+  {
+    "name": "机场签到",
+    "root_dir": "sspanel",
+    "author": "MadokaProject",
+    "version": "0.0.6",
+    "pypi": true,
+    "description": "签到获取流量"
+  },
+  {
+    "name": "摸摸",
+    "root_dir": "petpet",
+    "author": "MadokaProject",
+    "version": "0.0.6",
+    "pypi": false,
+    "description": "生成摸摸动图"
+  },
+  {
+    "name": "你画我猜",
+    "root_dir": "draw_something",
+    "author": "MadokaProject",
+    "version": "0.0.5",
+    "pypi": false,
+    "description": "你画我猜小游戏"
+  },
+  {
+    "name": "赛马",
+    "root_dir": "horse_racing",
+    "author": "MadokaProject",
+    "version": "0.0.6",
+    "pypi": false,
+    "description": "赛马小游戏"
+  },
+  {
+    "name": "涩图",
+    "root_dir": "setu",
+    "author": "MadokaProject",
+    "version": "0.0.5",
+    "pypi": false,
+    "description": "慎用"
+  },
+  {
+    "name": "网易云音乐",
+    "root_dir": "netease",
+    "author": "MadokaProject",
+    "version": "0.0.6",
+    "pypi": true,
+    "description": ""
+  },
+  {
+    "name": "学习通",
+    "root_dir": "chaoxing",
+    "author": "Colsrch",
+    "version": "0.0.5",
+    "pypi": true,
+    "description": ""
+  }
 ]

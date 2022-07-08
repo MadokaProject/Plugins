@@ -1,27 +1,28 @@
 import base64
 import hashlib
 import json
+from typing import Union
 
 import requests
 from Crypto.Cipher import AES
 from arclet.alconna import Alconna, Subcommand, Args, Arpamar
 from graia.ariadne.app import Ariadne
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Plain
+from graia.ariadne.model import Friend, Member, Group
 from graia.scheduler import GraiaScheduler, timers
 from loguru import logger
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
 from app.core.database import InitDB
-from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
 from app.util.network import general_request
+from app.util.phrases import *
 
-core: AppCore = AppCore.get_core_instance()
+core: AppCore = AppCore()
 app: Ariadne = core.get_app()
 sche: GraiaScheduler = core.get_scheduler()
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+database: InitDB = InitDB()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -39,54 +40,54 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         ],
         help_text='网易云: 为保证账号安全, 签到服务仅私发有效'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
+async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar, alc: Alconna):
     components = command.options.copy()
     components.update(command.subcommands)
     if not components:
-        return await self.print_help(alc.get_help())
+        return await print_help(alc.get_help())
     try:
         if qd := components.get('qd'):
-            if not hasattr(self, 'friend'):
+            if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
-            await NetEase_process_event(self.friend.id, qd['phone'], qd['password'])
+            await NetEase_process_event(target.id, qd['phone'], qd['password'])
         elif add := components.get('add'):
-            if not hasattr(self, 'friend'):
+            if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
                 if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [add['phone']]):
                     if not db.update(
                             'INSERT INTO Plugin_NetEase_Account (qid, phone, pwd) VALUES (%s, %s, %s)',
-                            [self.friend.id, add['phone'], add['password']]
+                            [target.id, add['phone'], add['password']]
                     ):
                         raise Exception()
                     return MessageChain([Plain('添加成功')])
                 else:
                     return MessageChain([Plain('该账号已存在！')])
         elif remove := components.get('remove'):
-            if not hasattr(self, 'friend'):
+            if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
                 if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
-                            [self.friend.id, remove['phone']]):
+                            [target.id, remove['phone']]):
                     if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
-                                 [self.friend.id, remove['phone']]):
+                                 [target.id, remove['phone']]):
                         return MessageChain([Plain('移除成功！')])
                 else:
                     return MessageChain([Plain('该账号不存在！')])
         elif command.find('list'):
-            if not hasattr(self, 'friend'):
+            if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
             with MysqlDao() as db:
-                res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [self.friend.id])
+                res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [target.id])
                 return MessageChain([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
         elif command.find('rp'):
             req = await general_request('https://v.api.aa1.cn/api/api-wenan-wangyiyunreping/index.php?aa1=text', 'GET')
             return MessageChain(req.strip('<p>').strip('</p>'))
         else:
-            return self.args_error()
+            return args_error()
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
 
 
 @sche.schedule(timers.crontabify('0 8 * * * 0'))
@@ -232,13 +233,12 @@ async def NetEase_process_event(qid, phone, pwd):
         return object['code']
 
 
-class DB(InitDB):
-
-    async def process(self):
-        with MysqlDao() as __db:
-            __db.update(
-                "create table if not exists Plugin_NetEase_Account( \
-                    qid char(12) not null comment 'QQ号', \
-                    phone char(11) not null comment '登录手机', \
-                    pwd char(20) not null comment '登录密码')"
-            )
+@database.init()
+async def init_db():
+    with MysqlDao() as __db:
+        __db.update(
+            "create table if not exists Plugin_NetEase_Account( \
+                qid char(12) not null comment 'QQ号', \
+                phone char(11) not null comment '登录手机', \
+                pwd char(20) not null comment '登录密码')"
+        )

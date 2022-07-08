@@ -2,8 +2,8 @@ name: Sync Coding
 
 on:
   push:
-    branches: 
-    - release
+    branches:
+      - release
   release:
     types: [ published ]
 

@@ -1,20 +1,21 @@
 import re
 from io import BytesIO
 from pathlib import Path
+from typing import Union
 
 import jieba.analyse
 import numpy
 from PIL import Image as IMG
 from arclet.alconna import Alconna, Subcommand, Arpamar
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import At, Plain, Image
+from graia.ariadne.message.element import At
+from graia.ariadne.model import Friend, Member, Group
 from loguru import logger
 from matplotlib import pyplot
 from wordcloud import WordCloud, ImageColorGenerator
 
 from app.core.commander import CommandDelegateManager
-from app.plugin.base import Plugin
 from app.util.dao import MysqlDao
+from app.util.phrases import *
 from app.util.send_message import safeSendGroupMessage
 from app.util.tools import to_thread
 
@@ -26,7 +27,7 @@ STOPWORDS = BASEPATH.joinpath("stopwords")
 RUNNING = 0
 RUNNING_LIST = []
 
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -41,49 +42,49 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         ],
         help_text='词云'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
+async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar, alc: Alconna):
     global RUNNING, RUNNING_LIST
     if not command.subcommands:
-        return await self.print_help(alc.get_help())
+        return await print_help(alc.get_help())
     try:
-        if not hasattr(self, 'group'):
+        if not isinstance(sender, Group):
             return MessageChain([Plain('请在群组使用该命令！')])
         if RUNNING < 5:
             RUNNING += 1
-            RUNNING_LIST.append(self.member.id)
+            RUNNING_LIST.append(target.id)
             with MysqlDao() as db:
                 if command.find('个人'):
                     talk_list = db.query(
-                        'SELECT content FROM msg WHERE uid=%s and qid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
-                        [self.group.id, self.member.id]
+                        'SELECT content FROM msg WHERE uid=%s and qid=%s and '
+                        'DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime', [sender.id, target.id]
                     )
                 else:
                     talk_list = db.query(
                         'SELECT content FROM msg WHERE uid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
-                        [self.group.id]
+                        [sender.id]
                     )
                 talk_list = [re.sub(r'[0-9]+', '', talk[0]).strip('@') for talk in talk_list if
                              talk[0] not in ['[图片]']]
             if len(talk_list) < 10:
-                await safeSendGroupMessage(self.group, MessageChain([Plain("当前样本量较少，无法制作")]))
+                await safeSendGroupMessage(sender, MessageChain([Plain("当前样本量较少，无法制作")]))
                 RUNNING -= 1
-                RUNNING_LIST.remove(self.member.id)
+                RUNNING_LIST.remove(target.id)
                 return
-            await safeSendGroupMessage(self.group, MessageChain(
-                [At(self.member.id), Plain(f" 正在制作词云，一周内共 {len(talk_list)} 条记录")]
+            await safeSendGroupMessage(sender, MessageChain(
+                [At(target.id), Plain(f" 正在制作词云，一周内共 {len(talk_list)} 条记录")]
             ))
             words = await get_frequencies(talk_list)
             image = await to_thread(make_wordcloud, words)
-            await safeSendGroupMessage(self.group, MessageChain([
-                At(self.member.id), Plain(f" 已成功制作{self.msg[0]}词云"), Image(data_bytes=image)]
+            await safeSendGroupMessage(sender, MessageChain([
+                At(target.id), Plain(f" 已成功制作{'个人' if command.find('个人') else '本群'}词云"), Image(data_bytes=image)]
             ))
             RUNNING -= 1
-            RUNNING_LIST.remove(self.member.id)
+            RUNNING_LIST.remove(target.id)
         else:
-            await safeSendGroupMessage(self.group, MessageChain([Plain("词云生成进程正忙，请稍后")]))
+            await safeSendGroupMessage(sender, MessageChain([Plain("词云生成进程正忙，请稍后")]))
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
 
 
 async def get_frequencies(msg_list):

@@ -1,15 +1,16 @@
+from typing import Union
+
 from arclet.alconna import Alconna, Args, Subcommand, Option, Arpamar
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Image, Plain
+from graia.ariadne.model import Friend, Member, Group
 from loguru import logger
 
 from app.core.commander import CommandDelegateManager
-from app.core.config import Config
 from app.core.settings import CONFIG
 from app.entities.game import BotGame
-from app.plugin.base import Plugin
+from app.util.control import Permission
 from app.util.dao import MysqlDao
 from app.util.network import general_request
+from app.util.phrases import *
 
 num = {
     # c: cost
@@ -17,7 +18,7 @@ num = {
     'search': {'c': 15}
 }
 
-manager: CommandDelegateManager = CommandDelegateManager.get_instance()
+manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
@@ -33,34 +34,32 @@ manager: CommandDelegateManager = CommandDelegateManager.get_instance()
         ],
         help_text='消耗10资金随机获取一张setu, 消耗15资金指定特定信息搜索'
     ))
-async def process(self: Plugin, command: Arpamar, alc: Alconna):
-    _user_id = (getattr(self, 'friend', None) or getattr(self, 'group', None)).id
-    R18 = CONFIG[str(_user_id)]['setu_R18'] if CONFIG.__contains__(str(_user_id)) and CONFIG[
-        str(_user_id)].__contains__('setu_R18') else 0
+async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar):
+    r18 = CONFIG[str(sender.id)]['setu_R18'] if CONFIG.__contains__(str(sender.id)) and CONFIG[
+        str(sender.id)].__contains__('setu_R18') else 0
     components = command.options.copy()
     components.update(command.subcommands)
     try:
-        if r18 := components.get('r18', False):
-            if not hasattr(self, 'group'):
+        if _r18 := components.get('r18', False):
+            if not isinstance(sender, Group):
                 return
-            config = Config()
-            if self.member.id != int(config.MASTER_QQ):
-                return self.not_admin()
+            if not Permission.manual(target, Permission.MASTER):
+                return not_admin()
             with MysqlDao() as db:
                 if db.update(
                         'REPLACE INTO config(name, uid, value) VALUES (%s, %s, %s)',
-                        ['setu_R18', self.group.id, r18['r18']]
+                        ['setu_R18', sender.id, _r18['r18']]
                 ):
-                    if not CONFIG.__contains__(str(self.group.id)):
-                        CONFIG.update({str(self.group.id): {}})
-                    CONFIG[str(self.group.id)].update({'setu_R18': r18['r18']})
+                    if not CONFIG.__contains__(str(sender.id)):
+                        CONFIG.update({str(sender.id): {}})
+                    CONFIG[str(sender.id)].update({'setu_R18': _r18['r18']})
                     return MessageChain([Plain('设置成功！')])
         else:
             # 判断积分是否足够，如果无，要求报错并返回
-            the_one = BotGame((getattr(self, 'friend', None) or getattr(self, 'member', None)).id)
+            the_one = BotGame(target.id)
             if await the_one.get_coins() < num['normal']['c']:
-                return self.point_not_enough()
-            keyword = {'r18': R18}
+                return point_not_enough()
+            keyword = {'r18': r18}
             if uid := components.get('uid'):
                 keyword.update({'uid': uid['uid']})
             if tag := components.get('tag'):
@@ -81,4 +80,4 @@ async def process(self: Plugin, command: Arpamar, alc: Alconna):
                 return MessageChain([Plain('setu: 获取失败')])
     except Exception as e:
         logger.exception(e)
-        return self.unkown_error()
+        return unknown_error()
