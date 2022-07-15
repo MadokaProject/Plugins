@@ -1,3 +1,4 @@
 [
-  "main.py"
+  "main.py",
+  "database/database.sql"
 ]

@@ -13,7 +13,6 @@ from prettytable import PrettyTable
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.core.database import InitDB
 from app.util.dao import MysqlDao
 from app.util.phrases import *
 from app.util.text2image import create_image
@@ -23,7 +22,6 @@ core: AppCore = AppCore()
 app: Ariadne = core.get_app()
 sche: GraiaScheduler = core.get_scheduler()
 manager: CommandDelegateManager = CommandDelegateManager()
-database: InitDB = InitDB()
 
 
 @manager.register(
@@ -183,21 +181,3 @@ async def tasker():
             await app.send_friend_message(int(user[0]), MessageChain([
                 Image(data_bytes=await create_image((await send_message(result)).get_string()))
             ]))
-
-
-@database.init()
-async def init_db():
-    with MysqlDao() as _db:
-        _db.update(
-            "create table if not exists chaoxing_sign( \
-                qid char(12) not null comment 'QQ', \
-                username char(11) not null comment '手机号', \
-                password varchar(256) not null comment '密码', \
-                latitude varchar(256) null default '-2' comment '纬度', \
-                longitude varchar(256) null default '-1' comment '经度', \
-                clientip varchar(20) not null comment 'IP地址', \
-                address varchar(256) null default '中国' comment '地址名', \
-                expiration_time datetime null comment '到期时间', \
-                auto_sign int null default 0 comment '自动签到状态', \
-                primary key (qid))"
-        )

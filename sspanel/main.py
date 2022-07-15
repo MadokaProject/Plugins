@@ -9,7 +9,6 @@ from loguru import logger
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.core.database import InitDB
 from app.util.dao import MysqlDao
 from app.util.phrases import *
 
@@ -18,7 +17,6 @@ requests.packages.urllib3.disable_warnings()
 core: AppCore = AppCore()
 app: Ariadne = core.get_app()
 sche: GraiaScheduler = core.get_scheduler()
-database: InitDB = InitDB()
 manager: CommandDelegateManager = CommandDelegateManager()
 
 
@@ -169,16 +167,3 @@ async def message_send(msg, qid):
         Plain('机场签到完成\r\n'),
         Plain(msg)
     ]))
-
-
-@database.init()
-async def init_db():
-    with MysqlDao() as __db:
-        __db.update(
-            "create table if not exists Plugin_Sspanel_Account( \
-                qid char(10) not null comment 'QQ号', \
-                web varchar(50) not null comment '签到地址', \
-                user varchar(50) not null comment '登陆邮箱', \
-                pwd varchar(50) not null comment '登陆密码', \
-                primary key(qid, web, user))"
-        )

@@ -13,7 +13,6 @@ from loguru import logger
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.core.database import InitDB
 from app.util.dao import MysqlDao
 from app.util.network import general_request
 from app.util.phrases import *
@@ -21,7 +20,6 @@ from app.util.phrases import *
 core: AppCore = AppCore()
 app: Ariadne = core.get_app()
 sche: GraiaScheduler = core.get_scheduler()
-database: InitDB = InitDB()
 manager: CommandDelegateManager = CommandDelegateManager()
 
 
@@ -231,14 +229,3 @@ async def NetEase_process_event(qid, phone, pwd):
             Plain(phone + "：发生错误：" + str(object['code']) + object['message'])
         ]))
         return object['code']
-
-
-@database.init()
-async def init_db():
-    with MysqlDao() as __db:
-        __db.update(
-            "create table if not exists Plugin_NetEase_Account( \
-                qid char(12) not null comment 'QQ号', \
-                phone char(11) not null comment '登录手机', \
-                pwd char(20) not null comment '登录密码')"
-        )

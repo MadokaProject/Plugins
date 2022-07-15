@@ -16,7 +16,6 @@ from prettytable import PrettyTable
 
 from app.core.commander import CommandDelegateManager
 from app.core.config import Config
-from app.core.database import InitDB
 from app.entities.game import BotGame
 from app.util.dao import MysqlDao
 from app.util.phrases import *
@@ -71,7 +70,6 @@ punishment = {
 
 config: Config = Config()
 manager: CommandDelegateManager = CommandDelegateManager()
-database: InitDB = InitDB()
 
 
 @manager.register(
@@ -310,15 +308,3 @@ async def update_english_test():
         except Exception as e:
             logger.exception(e)
             return MessageChain([Plain(f'题库更新异常: {e}')])
-
-
-@database.init()
-async def init_db():
-    with MysqlDao() as _db:
-        _db.update(
-            "create table if not exists word_dict( \
-                word varchar(50) not null, \
-                pos varchar(50) not null, \
-                tran varchar(200) not null, \
-                bookId varchar(50) not null)"
-        )
