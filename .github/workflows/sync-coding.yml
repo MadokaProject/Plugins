@@ -3,7 +3,7 @@ name: Sync Coding
 on:
   push:
     branches:
-      - release
+      - v3
   release:
     types: [ published ]
 
@@ -22,7 +22,7 @@ jobs:
                 "envs": [
                   {
                     "name": "BRANCH",
-                    "value": "release",
+                    "value": "v3",
                     "sensitive": 0
                   }
                 ]
