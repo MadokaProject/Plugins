@@ -5,8 +5,7 @@ from arclet.alconna import Alconna, Subcommand, Args, Arpamar
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import FriendMessage
 from graia.ariadne.model import Friend, Member, Group
-from graia.broadcast.interrupt import InterruptControl
-from graia.broadcast.interrupt.waiter import Waiter
+from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.scheduler import GraiaScheduler, timers
 from loguru import logger
 from prettytable import PrettyTable
@@ -37,8 +36,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
         ],
         help_text='学习通签到工具'
     ))
-async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar, alc: Alconna,
-                  inc: InterruptControl):
+async def process(target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar, alc: Alconna):
     if not command.subcommands:
         return await print_help(alc.get_help())
     try:
@@ -69,7 +67,6 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
         elif command.find('配置'):
             """配置账号信息"""
 
-            @Waiter.create([FriendMessage])
             async def waiter(waiter_friend: Friend, waiter_message: MessageChain):
                 if waiter_friend.id == target.id:
                     waiter_saying = waiter_message.display
@@ -78,7 +75,6 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
                         return False
                     return waiter_saying
 
-            @Waiter.create([FriendMessage])
             async def answer_waiter(waiter_friend: Friend, waiter_message: MessageChain):
                 if waiter_friend.id == target.id:
                     waiter_saying = waiter_message.display
@@ -93,28 +89,28 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
                 return MessageChain([Plain('请私聊我配置账号信息')])
             if await get_config(target.id):
                 await app.send_friend_message(sender, MessageChain([Plain('你已经配置了账号信息，是否重新配置？')]))
-                if not await inc.wait(answer_waiter, timeout=15):
+                if not await FunctionWaiter(answer_waiter, [FriendMessage]).wait(15):
                     return
             await app.send_friend_message(sender, MessageChain([Plain('开始配置，若想中途退出配置请发送：取消')]))
             await app.send_friend_message(sender, MessageChain([Plain('请输入用户名（手机号）')]))
-            if username := await inc.wait(waiter, timeout=60):
+            if username := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                 await app.send_friend_message(sender, MessageChain([Plain('请输入密码')]))
-                if password := await inc.wait(waiter, timeout=60):
+                if password := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                     await app.send_friend_message(sender, MessageChain([Plain('请输入定位纬度')]))
-                    if latitude := await inc.wait(waiter, timeout=60):
+                    if latitude := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                         await app.send_friend_message(sender, MessageChain([Plain('请输入定位经度')]))
-                        if longitude := await inc.wait(waiter, timeout=60):
+                        if longitude := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                             await app.send_friend_message(sender, MessageChain([Plain('请输入你的IP地址')]))
-                            if clientip := await inc.wait(waiter, timeout=60):
+                            if clientip := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                                 await app.send_friend_message(sender, MessageChain([Plain('请输入定位地址名')]))
-                                if address := await inc.wait(waiter, timeout=60):
+                                if address := await FunctionWaiter(waiter, [FriendMessage]).wait(60):
                                     await app.send_friend_message(sender, MessageChain([
                                         Plain('配置完成，请检查你的配置信息\r\n'),
                                         Plain(f'用户名：{username}\r\n密码：{password}\r\n纬度：{latitude}\r\n'),
                                         Plain(f'经度：{longitude}\r\nIP地址：{clientip}\r\n地址名：{address}\r\n'),
                                         Plain('是否保存？')
                                     ]))
-                                    if await inc.wait(answer_waiter, timeout=30):
+                                    if await FunctionWaiter(answer_waiter, [FriendMessage]).wait(30):
                                         with MysqlDao() as db:
                                             db.update(
                                                 'REPLACE INTO chaoxing_sign(qid, username, password, latitude, longitude, clientip, address) '

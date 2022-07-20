@@ -1,4 +1,4 @@
-numpy~=1.21.2
+numpy~=1.22.0
 jieba~=0.42.1
 matplotlib~=3.5.1
 wordcloud~=1.8.1

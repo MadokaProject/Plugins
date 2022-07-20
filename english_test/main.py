@@ -8,9 +8,8 @@ from arclet.alconna import Alconna, Subcommand, Arpamar
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.element import At
+from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.model import Group, Member, Friend
-from graia.broadcast.interrupt import InterruptControl
-from graia.broadcast.interrupt.waiter import Waiter
 from loguru import logger
 from prettytable import PrettyTable
 
@@ -85,14 +84,12 @@ manager: CommandDelegateManager = CommandDelegateManager()
         help_text='开启一轮背单词'
     )
 )
-async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar,
-                  inc: InterruptControl):
+async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar):
     if not isinstance(sender, Group):
         return MessageChain([Plain('请在群聊内使用该命令!')])
     if not command.subcommands:
         """开始背诵单词"""
         try:
-            @Waiter.create([GroupMessage])
             async def confirm(waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
                 if all([waiter_group.id == sender.id, waiter_member.id == target.id]):
                     waiter_saying = waiter_message.display
@@ -108,7 +105,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                                 Plain("请输入1-15以内的数字")
                             ]))
 
-            @Waiter.create([GroupMessage])
             async def waiter(waiter_group: Group, waiter_member: Member, waiter_message: MessageChain):
                 if waiter_group.id == sender.id:
                     waiter_saying = waiter_message.display
@@ -147,7 +143,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
             ]))
 
             try:
-                book_id = await inc.wait(confirm, timeout=30)
+                book_id = await FunctionWaiter(confirm, [GroupMessage]).wait(30)
                 if not book_id:
                     del RUNNING[sender.id]
                     return await app.send_group_message(sender, MessageChain([Plain("已取消")]))
@@ -179,7 +175,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 ]))
                 for __process in Process:
                     try:
-                        answer_qq = await inc.wait(waiter, timeout=15)
+                        answer_qq = await FunctionWaiter(waiter, [GroupMessage]).wait(15)
                         if answer_qq:
                             user = BotGame(answer_qq)
                             await user.update_english_answer(1)

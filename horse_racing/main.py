@@ -9,8 +9,7 @@ from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.element import At
 from graia.ariadne.model import Group, Member, Friend
-from graia.broadcast.interrupt import InterruptControl
-from graia.broadcast.interrupt.waiter import Waiter
+from graia.ariadne.util.interrupt import FunctionWaiter
 from loguru import logger
 
 from app.core.commander import CommandDelegateManager
@@ -39,8 +38,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
         help_text='赛马小游戏'
     ))
 async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar,
-                  alc: Alconna, inc: InterruptControl):
-    @Waiter.create([GroupMessage])
+                  alc: Alconna):
     async def waiter1(
             waiter1_group: Group, waiter1_member: Member, waiter1_message: MessageChain
     ):
@@ -178,7 +176,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 )
 
             try:
-                result = await inc.wait(waiter1, timeout=120)
+                result = await FunctionWaiter(waiter1, [GroupMessage]).wait(120)
                 if result:
                     GROUP_GAME_PROCESS[sender.id]["status"] = "running"
                 else:
