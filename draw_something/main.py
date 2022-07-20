@@ -9,8 +9,7 @@ from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.exception import UnknownTarget
 from graia.ariadne.message.element import Source, At
 from graia.ariadne.model import Group, Member, Friend
-from graia.broadcast.interrupt import InterruptControl
-from graia.broadcast.interrupt.waiter import Waiter
+from graia.ariadne.util.interrupt import FunctionWaiter
 from loguru import logger
 
 from app.core.commander import CommandDelegateManager
@@ -764,7 +763,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
         help_text='你画我猜'
     ))
 async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], source: Source,
-                  command: Arpamar, alc: Alconna, inc: InterruptControl):
+                  command: Arpamar, alc: Alconna):
     if not command.subcommands:
         return await print_help(alc.get_help())
     try:
@@ -792,8 +791,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 MEMBER_RUNING_LIST.remove(target.id)
                 return
 
-            # 请求确认中断
-            @Waiter.create([GroupMessage])
             async def confirm(confirm_group: Group, confirm_member: Member, confirm_message: MessageChain,
                               confirm_source: Source):
                 if all([confirm_group.id == sender.id,
@@ -809,8 +806,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                             Plain("请发送是或否来进行确认")
                         ]), quote=confirm_source)
 
-            # 等待答案中断
-            @Waiter.create([GroupMessage])
             async def start_game(submit_answer_group: Group, submit_answer_member: Member,
                                  submit_answer_message: MessageChain, submit_answer_source: Source):
                 group_id = GROUP_GAME_PROCESS[sender.id]
@@ -867,7 +862,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                     ]))
                 try:
                     # 新游戏创建完成，进入等待玩家阶段
-                    if await inc.wait(confirm, timeout=15):
+                    if await FunctionWaiter(confirm, [GroupMessage]).wait(15):
                         question = secrets.choice(WORD["word"])
                         GROUP_GAME_PROCESS[sender.id] = {
                             "question": question,
@@ -897,7 +892,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                             ]))
 
                         try:
-                            result = await inc.wait(start_game, timeout=180)
+                            result = await FunctionWaiter(start_game, [GroupMessage]).wait(180)
                             if result:
                                 owner = str(GROUP_GAME_PROCESS[sender.id]["owner"])
                                 await BotGame(owner).update_coin(2)
