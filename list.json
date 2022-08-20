@@ -3,7 +3,7 @@
     "name": "背单词",
     "root_dir": "english_test",
     "author": "MadokaProject",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "pypi": false,
     "description": "和群友一起背单词并赚取金币吧！"
   },
@@ -11,7 +11,7 @@
     "name": "词云",
     "root_dir": "word_cloud",
     "author": "MadokaProject",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "pypi": true,
     "description": "生成聊天词云"
   },
@@ -19,7 +19,7 @@
     "name": "机场签到",
     "root_dir": "sspanel",
     "author": "MadokaProject",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "pypi": true,
     "description": "签到获取流量"
   },
@@ -59,7 +59,7 @@
     "name": "网易云音乐",
     "root_dir": "netease",
     "author": "MadokaProject",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "pypi": true,
     "description": ""
   },
@@ -67,7 +67,7 @@
     "name": "学习通",
     "root_dir": "chaoxing",
     "author": "Colsrch",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "pypi": true,
     "description": ""
   }
