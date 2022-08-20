@@ -10,12 +10,13 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.model import Friend, Member, Group
 from graia.scheduler import GraiaScheduler, timers
 from loguru import logger
+from peewee import IntegrityError
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.util.dao import MysqlDao
 from app.util.network import general_request
 from app.util.phrases import *
+from .database.database import PluginNeteaseAccount as DBNetease
 
 core: AppCore = AppCore()
 app: Ariadne = core.get_app()
@@ -51,33 +52,25 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
         elif add := components.get('add'):
             if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
-            with MysqlDao() as db:
-                if not db.query('SELECT * FROM Plugin_NetEase_Account WHERE phone=%s', [add['phone']]):
-                    if not db.update(
-                            'INSERT INTO Plugin_NetEase_Account (qid, phone, pwd) VALUES (%s, %s, %s)',
-                            [target.id, add['phone'], add['password']]
-                    ):
-                        raise Exception()
-                    return MessageChain([Plain('添加成功')])
-                else:
-                    return MessageChain([Plain('该账号已存在！')])
+            try:
+                DBNetease.create(qid=target.id, phone=add['phone'], pwd=add['password'])
+                return MessageChain([Plain('添加成功')])
+            except IntegrityError:
+                return MessageChain([Plain('该账号已存在！')])
         elif remove := components.get('remove'):
             if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
-            with MysqlDao() as db:
-                if db.query('SELECT * FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
-                            [target.id, remove['phone']]):
-                    if db.update('DELETE FROM Plugin_NetEase_Account WHERE qid=%s and phone=%s',
-                                 [target.id, remove['phone']]):
-                        return MessageChain([Plain('移除成功！')])
-                else:
-                    return MessageChain([Plain('该账号不存在！')])
+            if DBNetease.get_or_none(qid=target.id, phone=remove['phone']):
+                DBNetease.delete().where(DBNetease.qid == target.id, DBNetease.phone == remove['phone']).execute()
+                return MessageChain([Plain('移除成功！')])
+            else:
+                return MessageChain([Plain('该账号不存在！')])
         elif command.find('list'):
             if not isinstance(sender, Friend):
                 return MessageChain([Plain('请私聊使用该命令!')])
-            with MysqlDao() as db:
-                res = db.query('SELECT phone FROM Plugin_NetEase_Account WHERE qid=%s', [target.id])
-                return MessageChain([Plain('\n'.join([f'{phone[0]}' for phone in res]))])
+            return MessageChain(
+                '\n'.join(res.phone for res in DBNetease.select().where(DBNetease.qid == target.id))
+            )
         elif command.find('rp'):
             req = await general_request('https://v.api.aa1.cn/api/api-wenan-wangyiyunreping/index.php?aa1=text', 'GET')
             return MessageChain(req.strip('<p>').strip('</p>'))
@@ -90,15 +83,11 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
 
 @sche.schedule(timers.crontabify('0 8 * * * 0'))
 async def tasker():
-    with MysqlDao() as db:
-        accounts = db.query(
-            'SELECT qid, phone, pwd FROM Plugin_NetEase_Account'
-        )
-        for (qid, phone, pwd) in accounts:
-            await app.send_friend_message(int(qid), MessageChain([
-                Plain("正在进行账号" + phone + "的自动签到任务\r\n下次运行时间为：8:00")
-            ]))
-            await NetEase_process_event(int(qid), phone, pwd)
+    for res in DBNetease.select():
+        await app.send_friend_message(int(res.qid), MessageChain([
+            Plain("正在进行账号" + res.phone + "的自动签到任务\r\n下次运行时间为：8:00")
+        ]))
+        await NetEase_process_event(int(res.qid), res.phone, res.pwd)
 
 
 def encrypt(key, text):

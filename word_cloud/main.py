@@ -1,4 +1,5 @@
 import re
+import datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Union
@@ -14,7 +15,7 @@ from matplotlib import pyplot
 from wordcloud import WordCloud, ImageColorGenerator
 
 from app.core.commander import CommandDelegateManager
-from app.util.dao import MysqlDao
+from app.plugin.basic.__01_sys.database.database import Msg as DBMsg
 from app.util.phrases import *
 from app.util.send_message import safeSendGroupMessage
 from app.util.tools import to_thread
@@ -52,19 +53,19 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
         if RUNNING < 5:
             RUNNING += 1
             RUNNING_LIST.append(target.id)
-            with MysqlDao() as db:
-                if command.find('个人'):
-                    talk_list = db.query(
-                        'SELECT content FROM msg WHERE uid=%s and qid=%s and '
-                        'DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime', [sender.id, target.id]
-                    )
-                else:
-                    talk_list = db.query(
-                        'SELECT content FROM msg WHERE uid=%s and DATE_SUB(CURDATE(), INTERVAL 7 DAY) <= datetime',
-                        [sender.id]
-                    )
-                talk_list = [re.sub(r'[0-9]+', '', talk[0]).strip('@') for talk in talk_list if
-                             talk[0] not in ['[图片]']]
+            if command.find('个人'):
+                talk_list = DBMsg.select(DBMsg.content).where(
+                    DBMsg.uid == sender.id,
+                    DBMsg.qid == target.id,
+                    DBMsg.datetime >= datetime.datetime.now() - datetime.timedelta(days=7)
+                )
+            else:
+                talk_list = DBMsg.select(DBMsg.content).where(
+                    DBMsg.uid == sender.id,
+                    DBMsg.datetime >= datetime.datetime.now() - datetime.timedelta(days=7)
+                )
+            talk_list = [re.sub(r'[0-9]+', '', talk.content).strip('@') for talk in talk_list if
+                         talk.content not in ['[图片]']]
             if len(talk_list) < 10:
                 await safeSendGroupMessage(sender, MessageChain([Plain("当前样本量较少，无法制作")]))
                 RUNNING -= 1

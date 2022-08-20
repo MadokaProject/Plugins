@@ -6,11 +6,12 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.model import Friend, Member, Group
 from graia.scheduler import GraiaScheduler, timers
 from loguru import logger
+from peewee import fn
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.util.dao import MysqlDao
 from app.util.phrases import *
+from .database.database import PluginSspanelAccount as DBSspanel
 
 requests.packages.urllib3.disable_warnings()
 
@@ -53,30 +54,20 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
                 Plain(msg)
             ])
         elif add := subcommand.get('add'):
-            with MysqlDao() as db:
-                return MessageChain([
-                    Plain('添加/修改成功！' if db.update(
-                        'REPLACE INTO plugin_sspanel_account(qid, web, user, pwd) VALUES (%s, %s, %s, %s)',
-                        [target.id, add['host'], add['email'], add['password']]
-                    ) else '添加/修改失败！')
-                ])
+            DBSspanel.replace(qid=target.id, web=add['host'], user=add['email'], pwd=add['password']).execute()
+            return MessageChain('添加/修改成功！')
         elif remove := subcommand.get('remove'):
-            with MysqlDao() as db:
-                return MessageChain([
-                    Plain('删除成功！' if db.update(
-                        'DELETE FROM plugin_sspanel_account WHERE qid=%s and web=%s and user=%s',
-                        [target.id, remove['host'], remove['email']]
-                    ) else '删除失败！')
-                ])
+            DBSspanel.delete().where(
+                DBSspanel.qid == target.id,
+                DBSspanel.web == remove['host'],
+                DBSspanel.user == remove['email']
+            ).execute()
+            return MessageChain('删除成功！')
         elif command.find('list'):
-            with MysqlDao() as db:
-                res = db.query(
-                    'SELECT web, user FROM plugin_sspanel_account WHERE qid=%s',
-                    [target.id]
-                )
-                return MessageChain([
-                    Plain('\n'.join(f'{index}: {web}\t{user}' for index, (web, user) in enumerate(res)))
-                ])
+            return MessageChain('\n'.join(
+                f'{index}: {res.web}\t{res.user}' for index, res in
+                enumerate(DBSspanel.select().where(DBSspanel.qid == target.id))
+            ))
         return args_error()
     except Exception as e:
         logger.exception(e)
@@ -85,27 +76,30 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
 
 @sche.schedule(timers.crontabify('0 8 * * * 0'))
 async def tasker():
-    with MysqlDao() as _db:
-        accounts = _db.query(
-            'SELECT qid, web, user, pwd FROM Plugin_Sspanel_Account'
-        )
-        if accounts:
-            for index, (qid, web, user, pwd) in enumerate(accounts):
-                account = {}
-                account.update({
-                    index: {
-                        'web': web,
-                        'user': user,
-                        'pwd': pwd
-                    }
-                })
-                msg = await checkin(account)
-                await message_send(msg, int(qid))
+    for res in DBSspanel.select(
+            DBSspanel.qid,
+            fn.GROUP_CONCAT(DBSspanel.web, '||').alias('group_web'),
+            fn.GROUP_CONCAT(DBSspanel.user, '||').alias('group_user'),
+            fn.GROUP_CONCAT(DBSspanel.pwd, '||').alias('group_pwd')
+    ).group_by(DBSspanel.qid):
+        accounts = {
+            index: {
+                'web': web,
+                'user': user,
+                'pwd': pwd
+            } for index, (web, user, pwd) in enumerate(zip(
+                res.group_web.replace('||,', '||').strip('||').split('||'),
+                res.group_user.replace('||,', '||').strip('||').split('||'),
+                res.group_pwd.replace('||,', '||').strip('||').split('||')
+            ))
+        }
+        msg = await checkin(accounts)
+        await message_send(msg, int(res.qid))
 
 
 async def checkin(account):
     msgall = ''
-    for i in range(len(account.keys())):
+    for i in account.keys():
 
         email = account[i]['user'].split('@')
         email = email[0] + '%40' + email[1]

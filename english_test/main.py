@@ -8,17 +8,18 @@ from arclet.alconna import Alconna, Subcommand, Arpamar
 from graia.ariadne import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.element import At
-from graia.ariadne.util.interrupt import FunctionWaiter
 from graia.ariadne.model import Group, Member, Friend
+from graia.ariadne.util.interrupt import FunctionWaiter
 from loguru import logger
 from prettytable import PrettyTable
 
 from app.core.commander import CommandDelegateManager
 from app.core.config import Config
 from app.entities.game import BotGame
-from app.util.dao import MysqlDao
+from app.plugin.basic.__11_game.database.database import Game as DBGame
 from app.util.phrases import *
 from app.util.text2image import create_image
+from .database.database import WordDict as DBWordDict
 
 BOOK_ID = {
     "CET4luan_1": {"name": "四级真题核心词", "id": "1"},
@@ -157,15 +158,15 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
 
             while True:
                 word_data = await random_word(book_id)
-                RUNNING[sender.id] = word_data[0]
-                pop = word_data[1].split("&")
-                if pop == "":
-                    pop = ["/"]
-                tran = word_data[2].split("&")
+                RUNNING[sender.id] = word_data.word
+                pos = word_data.pos.split("&")
+                if pos == "":
+                    pos = ["/"]
+                tran = word_data.tran.split("&")
                 word_len = len(word_data[0])
                 wordinfo = []
                 tran_num = 0
-                for p in pop:
+                for p in pos:
                     wordinfo.append(f"[ {p} ] {tran[tran_num]}")
                     tran_num += 1
                 await app.send_group_message(sender, MessageChain([
@@ -221,27 +222,23 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
     if command.find('排行'):
         """排行"""
         try:
-            with MysqlDao() as db:
-                res = db.query(
-                    "SELECT qid, english_answer FROM game ORDER BY english_answer DESC"
-                )
-                members = await app.get_member_list(sender.id)
-                group_user = {item.id: item.name for item in members}
-                resp = MessageChain([Plain('群内英语答题排行：\r\n')])
-                index = 1
-                msg = PrettyTable()
-                msg.field_names = ['序号', '群昵称', '答题数量']
-                for qid, english_answer in res:
-                    if english_answer == 0 or int(qid) not in group_user.keys():
-                        continue
-                    msg.add_row([index, group_user[int(qid)], english_answer])
-                    index += 1
-                msg.align = 'r'
-                msg.align['群昵称'] = 'l'
-                resp.extend(MessageChain([
-                    Image(data_bytes=await create_image(msg.get_string()))
-                ]))
-                return resp
+            members = await app.get_member_list(sender.id)
+            group_user = {item.id: item.name for item in members}
+            resp = MessageChain([Plain('群内英语答题排行：\r\n')])
+            index = 1
+            msg = PrettyTable()
+            msg.field_names = ['序号', '群昵称', '答题数量']
+            for res in DBGame.select().order_by(DBGame.english_answer.desc()):
+                if res.english_answer == 0 or int(res.qid) not in group_user.keys():
+                    continue
+                msg.add_row([index, group_user[int(res.qid)], res.english_answer])
+                index += 1
+            msg.align = 'r'
+            msg.align['群昵称'] = 'l'
+            resp.extend(MessageChain([
+                Image(data_bytes=await create_image(msg.get_string()))
+            ]))
+            return resp
         except Exception as e:
             logger.exception(e)
             return unknown_error()
@@ -258,49 +255,45 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
 
 
 async def random_word(book_id):
-    with MysqlDao() as __db:
-        p = __db.query('SELECT * FROM word_dict WHERE bookId=%s', [str(book_id)])
-        data = random.choice(p)
-        return [data[0], data[1], data[2]]
+    """随机获取一个单词"""
+    p = DBWordDict.select().where(DBWordDict.book_id == book_id)
+    data = random.choice(p)
+    return data
 
 
 async def update_english_test():
-    with MysqlDao() as db:
-        def replaceFran(text):
-            fr_en = [['é', 'e'], ['ê', 'e'],
-                     ['è', 'e'], ['ë', 'e'],
-                     ['à', 'a'], ['â', 'a'],
-                     ['ç', 'c'], ['î', 'i'],
-                     ['ï', 'i'], ['ô', 'o'],
-                     ['ù', 'u'], ['û', 'u'],
-                     ['ü', 'u'], ['ÿ', 'y']]
-            for i in fr_en:
-                text = text.replace(i[0], i[1])
-            return text
+    def replaceFran(text):
+        fr_en = [['é', 'e'], ['ê', 'e'],
+                 ['è', 'e'], ['ë', 'e'],
+                 ['à', 'a'], ['â', 'a'],
+                 ['ç', 'c'], ['î', 'i'],
+                 ['ï', 'i'], ['ô', 'o'],
+                 ['ù', 'u'], ['û', 'u'],
+                 ['ü', 'u'], ['ÿ', 'y']]
+        for i in fr_en:
+            text = text.replace(i[0], i[1])
+        return text
 
-        try:
-            for file in Path(__file__).parent.joinpath('worddict').glob('*.json'):
-                with open(file, 'r', encoding='utf-8') as f:
-                    for line in f.readlines():
-                        words = line.strip()
-                        word_json = json.loads(words)
-                        word_pop = []
-                        word_tran = []
-                        for tran in word_json['content']['word']['content']['trans']:
-                            if 'pos' in tran:
-                                word_pop.append(tran['pos'])
-                            word_tran.append(tran['tranCn'])
-                        data = [
-                            replaceFran(word_json["headWord"]),
-                            "&".join(word_pop),
-                            "&".join(word_tran),
-                            BOOK_ID[word_json['bookId']]['id']
-                        ]
-                        db.update(
-                            'INSERT INTO word_dict(word, pos, tran, bookId) VALUES(%s, %s, %s, %s)',
-                            [data[0], data[1], data[2], data[3]]
-                        )
-            return MessageChain([Plain('题库更新完成！')])
-        except Exception as e:
-            logger.exception(e)
-            return MessageChain([Plain(f'题库更新异常: {e}')])
+    try:
+        for file in Path(__file__).parent.joinpath('worddict').glob('*.json'):
+            with open(file, 'r', encoding='utf-8') as f:
+                for line in f.readlines():
+                    words = line.strip()
+                    word_json = json.loads(words)
+                    word_pop = []
+                    word_tran = []
+                    for tran in word_json['content']['word']['content']['trans']:
+                        if 'pos' in tran:
+                            word_pop.append(tran['pos'])
+                        word_tran.append(tran['tranCn'])
+                    data = [
+                        replaceFran(word_json["headWord"]),
+                        "&".join(word_pop),
+                        "&".join(word_tran),
+                        BOOK_ID[word_json['bookId']]['id']
+                    ]
+                    DBWordDict.replace(word=data[0], pos=data[1], tran=data[2], book_id=data[3]).execute()
+        return MessageChain([Plain('题库更新完成！')])
+    except Exception as e:
+        logger.exception(e)
+        return MessageChain([Plain(f'题库更新异常: {e}')])

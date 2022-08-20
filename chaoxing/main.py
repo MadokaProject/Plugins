@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import List, Dict, Union
 
 from arclet.alconna import Alconna, Subcommand, Args, Arpamar
@@ -12,9 +13,9 @@ from prettytable import PrettyTable
 
 from app.core.app import AppCore
 from app.core.commander import CommandDelegateManager
-from app.util.dao import MysqlDao
 from app.util.phrases import *
 from app.util.text2image import create_image
+from .database.database import ChaoxingSign as DBChaoxingSign
 from .sign import AutoSign
 
 core: AppCore = AppCore()
@@ -45,12 +46,12 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
             info = await get_config(target.id)
             if not info:
                 return MessageChain([Plain('你还未配置账号信息，请私聊我进行配置')])
-            auto_sign = AutoSign(username=info[0],
-                                 password=info[1],
-                                 latitude=info[2],
-                                 longitude=info[3],
-                                 clientip=info[4],
-                                 address=info[5])
+            auto_sign = AutoSign(username=info.username,
+                                 password=info.password,
+                                 latitude=info.latitude,
+                                 longitude=info.longitude,
+                                 clientip=info.clientip,
+                                 address=info.address)
             results: List[List[Dict]] = await auto_sign.start_sign_task()
             await auto_sign.close_session()
             return MessageChain([
@@ -61,8 +62,7 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
             """自动签到开关"""
             if not await get_config(target.id):
                 return MessageChain([Plain('你还未配置账号信息，请私聊我进行配置')])
-            with MysqlDao() as db:
-                db.update('UPDATE chaoxing_sign SET auto_sign=%s WHERE qid=%s', [command.query('status'), target.id])
+            DBChaoxingSign.update(auto_sign=command.query('status')).where(DBChaoxingSign.qid == target.id)
             return MessageChain([Plain('开启成功' if command.query('status') else '关闭成功')])
         elif command.find('配置'):
             """配置账号信息"""
@@ -111,13 +111,15 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
                                         Plain('是否保存？')
                                     ]))
                                     if await FunctionWaiter(answer_waiter, [FriendMessage]).wait(30):
-                                        with MysqlDao() as db:
-                                            db.update(
-                                                'REPLACE INTO chaoxing_sign(qid, username, password, latitude, longitude, clientip, address) '
-                                                'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                                                [target.id, username, password, latitude, longitude, clientip,
-                                                 address]
-                                            )
+                                        DBChaoxingSign.replace(
+                                            qid=target.id,
+                                            username=username,
+                                            password=password,
+                                            latitude=latitude,
+                                            longitude=longitude,
+                                            clientip=clientip,
+                                            address=address
+                                        ).execute()
                                         return MessageChain([Plain('配置成功！')])
         else:
             return args_error()
@@ -128,13 +130,8 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
         return unknown_error()
 
 
-async def get_config(user_id) -> list:
-    with MysqlDao() as db:
-        res = db.query(
-            'SELECT username, password, latitude, longitude, clientip, address FROM chaoxing_sign WHERE qid=%s',
-            [user_id]
-        )
-        return res[0] if res else None
+async def get_config(user_id):
+    return DBChaoxingSign.get_or_none(DBChaoxingSign.qid == user_id)
 
 
 async def gen_run(info: dict) -> List[List[Dict]]:
@@ -163,17 +160,17 @@ async def send_message(datas):
 @logger.catch()
 async def tasker():
     logger.info('chaoxing tasker is running ...')
-    with MysqlDao() as db:
-        info = db.query('SELECT * FROM chaoxing_sign WHERE expiration_time>=CURDATE() and auto_sign=1')
-    for user in info:
+    for user in DBChaoxingSign.select().where(
+            DBChaoxingSign.expiration_time >= datetime.now(), DBChaoxingSign.auto_sign == 1
+    ):
         if result := await gen_run({
-            "username": user[1],
-            "password": user[2],
-            "latitude": user[3],
-            "longitude": user[4],
-            "clientip": user[5],
-            "address": user[6]
+            "username": user.username,
+            "password": user.password,
+            "latitude": user.latitude,
+            "longitude": user.longitude,
+            "clientip": user.clientip,
+            "address": user.address
         }):
-            await app.send_friend_message(int(user[0]), MessageChain([
+            await app.send_friend_message(int(user.qid), MessageChain([
                 Image(data_bytes=await create_image((await send_message(result)).get_string()))
             ]))

@@ -1,5 +1,5 @@
 [
   "main.py",
   "sign.py",
-  "database/database.sql"
+  "database/database.py"
 ]
