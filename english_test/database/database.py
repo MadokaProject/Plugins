@@ -11,7 +11,6 @@ class WordDict(ORM):
 
     class Meta:
         table_name = 'word_dict'
-        primary_key = CompositeKey('word', 'pos')
 
 
 WordDict.create_table()

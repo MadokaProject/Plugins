@@ -1,1 +1,0 @@
-ALTER TABLE word_dict ADD PRIMARY KEY (word, pos);
