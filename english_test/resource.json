@@ -1,7 +1,6 @@
 [
     "main.py",
     "database/database.py",
-    "database/20220820-2036.sql",
     "worddict/BEC_2.json",
     "worddict/ChuZhongluan_2.json",
     "worddict/KaoYanluan_1.json",
