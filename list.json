@@ -3,7 +3,7 @@
     "name": "背单词",
     "root_dir": "english_test",
     "author": "MadokaProject",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "pypi": false,
     "description": "和群友一起背单词并赚取金币吧！"
   },

@@ -19,6 +19,7 @@ from app.entities.game import BotGame
 from app.plugin.basic.__11_game.database.database import Game as DBGame
 from app.util.phrases import *
 from app.util.text2image import create_image
+from app.util.tools import to_thread
 from .database.database import WordDict as DBWordDict
 
 BOOK_ID = {
@@ -163,7 +164,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 if pos == "":
                     pos = ["/"]
                 tran = word_data.tran.split("&")
-                word_len = len(word_data[0])
+                word_len = len(word_data.word)
                 wordinfo = []
                 tran_num = 0
                 for p in pos:
@@ -249,19 +250,19 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
         await app.send_group_message(sender, MessageChain([
             Plain('正在更新题库，所需时间可能较长，请耐心等待')
         ]))
-        await asyncio.gather(update_english_test())
+        await to_thread(update_english_test)
     else:
         return args_error()
 
 
 async def random_word(book_id):
     """随机获取一个单词"""
-    p = DBWordDict.select().where(DBWordDict.book_id == book_id)
+    p = DBWordDict.select(DBWordDict.word, DBWordDict.pos, DBWordDict.tran).where(DBWordDict.book_id == book_id)
     data = random.choice(p)
     return data
 
 
-async def update_english_test():
+def update_english_test():
     def replaceFran(text):
         fr_en = [['é', 'e'], ['ê', 'e'],
                  ['è', 'e'], ['ë', 'e'],
