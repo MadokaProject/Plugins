@@ -86,5 +86,13 @@
     "version": "0.0.1",
     "pypi": false,
     "description": "能够进行四则运算的小工具"
+  },
+  {
+    "name": "礼堂丁真",
+    "root_dir": "myyueyue_dingzhen",
+    "author": "myyueyue",
+    "version": "0.0.1",
+    "pypi": false,
+    "description": "芝士雪豹"
   }
 ]
