@@ -67,7 +67,7 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
             talk_list = [
                 re.sub(r'[0-9]+', '', talk).strip('@')
                 for talk in (MessageChain.from_persistent_string(msg.content).display for msg in talk_list)
-                if talk not in ['[图片]']
+                if talk not in ['[图片]'] or talk[0] not in '.,;!?。，；！？/\\'
             ]
             if len(talk_list) < 10:
                 await safeSendGroupMessage(sender, MessageChain([Plain("当前样本量较少，无法制作")]))
