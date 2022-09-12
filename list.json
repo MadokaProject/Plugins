@@ -78,5 +78,13 @@
     "version": "0.0.2",
     "pypi": false,
     "description": "一个实用的站长工具"
+  },
+  {
+    "name": "四则计算器",
+    "root_dir": "myyueyue_calculator",
+    "author": "myyueyue",
+    "version": "0.0.1",
+    "pypi": false,
+    "description": "能够进行四则运算的小工具"
   }
 ]
