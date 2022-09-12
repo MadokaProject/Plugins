@@ -70,5 +70,13 @@
     "version": "0.0.8",
     "pypi": true,
     "description": ""
+  },
+  {
+    "name": "站长工具",
+    "root_dir": "myyueyue_site_tools",
+    "author": "myyueyue",
+    "version": "0.0.1",
+    "pypi": false,
+    "description": "一个实用的站长工具"
   }
 ]
