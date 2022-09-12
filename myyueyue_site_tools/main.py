@@ -21,7 +21,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
             Subcommand('dmjc',help_text='域名拦截检测'),
             Subcommand('gab',help_text='公安备案查询')
         ],
-        main_args=Args['site', str],
+        main_args=Args['site;O|H', str],
         help_text='站点工具'
     )
 )
