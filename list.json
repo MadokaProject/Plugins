@@ -94,5 +94,13 @@
     "version": "0.0.1",
     "pypi": false,
     "description": "芝士雪豹"
+  },
+  {
+    "name": "新闻",
+    "root_dir": "news",
+    "author": "Colsrch",
+    "version": "0.0.1",
+    "pypi": false,
+    "description": "每日 7:30 推送新闻"
   }
 ]
