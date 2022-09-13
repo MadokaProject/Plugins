@@ -13,7 +13,7 @@ from app.core.config import Config
 from app.core.commander import CommandDelegateManager
 from app.util.control import Permission
 from app.util.network import general_request
-from app.util.phrases import print_help, unknown_error, no_admin
+from app.util.phrases import print_help, unknown_error, not_admin
 from .database.database import News
 
 
@@ -45,9 +45,9 @@ async def process(target: Union[Friend, Member], sender: Union[Friend, Group], c
         elif Permission.manual(target, level=Permission.GROUP_ADMIN):
             model = 'group'
         else:
-            return await no_admin()
+            return await not_admin()
         News.replace(uid=sender.id, model=model, status=cmd.find('on')).execute()
-        return MessageChain('设置成功！')
+        return MessageChain('设置成功！' + '将于每日 7:30 推送日报' if cmd.find('on') else '')
     except Exception as e:
         logger.error(e)
         return await unknown_error()
