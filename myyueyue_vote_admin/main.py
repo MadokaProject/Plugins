@@ -86,7 +86,7 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
         vote_mark = random.randint(1, 99999999)
         vote_result: Dict[int, bool] = {}
         if target.id not in vote_admin_users:
-            return not_admin()
+            return await not_admin()
 
         async def voter(vote_member: Member, vote_group: Group, vote_message: MessageChain, vote_source: Source):
             """投票器"""
