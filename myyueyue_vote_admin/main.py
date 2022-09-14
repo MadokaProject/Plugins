@@ -40,7 +40,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
 async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Friend, Group], cmd: Arpamar,
                   alc: Alconna):
     if not cmd.subcommands:
-        return print_help(alc.get_help())
+        return await print_help(alc.get_help())
     try:
         vote_config: dict = await get_config('myyueyue_vote', sender)
         # 获取拥有投票权限的成员
