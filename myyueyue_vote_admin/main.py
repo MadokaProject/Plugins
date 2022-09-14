@@ -28,7 +28,7 @@ manager: CommandDelegateManager = CommandDelegateManager()
         options=[
             Subcommand('mute', help_text='投票禁言', args=Args['member', [At, int]]),
             Subcommand('kick', help_text='投票踢出', args=Args['member', [At, int]]),
-            Subcommand('config', help_text='设置投票通过比例', args=Args['type;O', ['mute', 'kick']]['proportion;O', int]),
+            Subcommand('config', help_text='设置投票通过比例', args=Args['type;O', ['mute', 'kick']]['proportion;O', float]),
             Subcommand('user', help_text='投票成员管理(仅管理可用)', args=Args['member;O', [At, int]]),
             Option('--add', help_text='添加'),
             Option('--delete', help_text='删除'),
@@ -75,8 +75,11 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
             if cmd.find('list'):
                 return MessageChain('\n'.join(f'{k}: {v}' for k, v in vote_config.items() if k != 'user'))
             if all([_type := cmd.query('type'), proportion := cmd.query('proportion')]):
-                await save_config('myyueyue_vote', sender, {_type: proportion}, model='add')
-                return MessageChain('设置成功！')
+                if 0 < proportion <= 1:
+                    await save_config('myyueyue_vote', sender, {_type: proportion}, model='add')
+                    return MessageChain('设置成功！')
+                else:
+                    return MessageChain('比例应在 0-1 之间')
             else:
                 return MessageChain('缺少参数!')
 
@@ -117,6 +120,8 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 await FunctionWaiter(voter, [GroupMessage]).wait(180)
             except asyncio.TimeoutError:
                 _proportion = len([i for i in vote_result.values() if i]) / len(vote_result)
+                if _type not in vote_config:
+                    vote_config[_type] = 0.7
                 if _proportion > vote_config[_type]:
                     vote_ret = _proportion, True
                 else:
