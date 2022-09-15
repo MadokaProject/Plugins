@@ -62,7 +62,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                     Plain('\n'.join(str(i) for i in vote_admin_users))
                 ])
             if member := cmd.query('member'):
-                print(member)
                 if isinstance(member, At):
                     member = member.target
                 if cmd.find('add'):
@@ -115,8 +114,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
             """投票器"""
             vote_message = vote_message.display.replace(
                 '：', ':').replace(' ', '')
-            print(vote_member.id)
-            print(vote_member.id in vote_admin_users)
             if all([sender.id == vote_group.id, vote_member.id in vote_admin_users]):
                 if vote_message == f'同意:{vote_mark}':
                     vote_result[vote_member.id] = True
@@ -124,7 +121,6 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
                 elif vote_message == f'反对:{vote_mark}':
                     vote_result[vote_member.id] = False
                     await app.send_group_message(vote_group, MessageChain('你投了反对票'), quote=vote_source)
-                print(len(vote_result) == len(vote_admin_users))
                 if len(vote_result) == len(vote_admin_users):
                     return True
 
