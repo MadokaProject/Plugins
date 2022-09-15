@@ -7,15 +7,15 @@ from graia.ariadne.app import Ariadne
 from graia.ariadne.event.message import GroupMessage
 from graia.ariadne.message.chain import MessageChain
 from graia.ariadne.message.element import At, Plain, Source
-from graia.ariadne.model import Friend, Group, Member
+from graia.ariadne.model import Friend, Group, Member, MemberPerm
 from graia.ariadne.util.interrupt import FunctionWaiter
 from loguru import logger
 
 from app.core.commander import CommandDelegateManager
+from app.core.config import Config
 from app.util.control import Permission
 from app.util.online_config import save_config, get_config
-from app.util.phrases import print_help, unknown_error, not_admin, args_error
-
+from app.util.phrases import print_help, unknown_error, not_admin, args_error, exec_permission_error
 
 manager: CommandDelegateManager = CommandDelegateManager()
 
@@ -91,9 +91,9 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
             if cmd.find('list'):
                 return MessageChain([
                     Plain('配置信息:\n'),
-                    Plain('\n'.join(f'{k}: {v}' for k,
-                          v in vote_config.items() if k != 'user'))
-                ])
+                    Plain('\n'.join(
+                        f'{k}: {v}' for k, v in vote_config.items() if k != 'user')
+                    )])
             if cmd.find('mute'):
                 _type = 'mute'
             elif cmd.find('kick'):
@@ -157,21 +157,28 @@ async def process(app: Ariadne, target: Union[Friend, Member], sender: Union[Fri
 
         if target.id not in vote_admin_users:
             return not_admin()
-        
+
         if not cmd.find('member'):
             return MessageChain('缺少 member 参数')
 
+        user: Union[At, int] = cmd.query('member')
+        if isinstance(user, At):
+            user: int = user.target
+        if sender.account_perm == MemberPerm.Member:
+            return exec_permission_error()
+        if user == app.account:
+            return MessageChain('怎么会有笨蛋想要对我投票')
+        if user == Config().MASTER_QQ:
+            await app.mute_member(sender, target, 30)
+            return MessageChain('你又在调皮了')
+        if user in vote_admin_users or (await app.get_member(sender, user)).permission != MemberPerm.Member:
+            return MessageChain('不能对拥有投票权限或管理员权限的成员进行投票')
+
         if cmd.find('mute'):
-            user = cmd.query('member')
-            if isinstance(user, At):
-                user = user.target
             ret = await vote(user, 'mute')
             if ret[1]:
                 await app.mute_member(sender, user, cmd.query('time') * 60)
         elif cmd.find('kick'):
-            user = cmd.query('member')
-            if isinstance(user, At):
-                user = user.target
             ret = await vote(user, 'kick')
             if ret[1]:
                 await app.kick_member(sender, user, cmd.query('time') * 60)
