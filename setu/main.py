@@ -62,7 +62,7 @@ async def process(
         else:
             # 判断积分是否足够，如果无，要求报错并返回
             the_one = BotGame(target.id)
-            if await the_one.get_coins() < num["normal"]["c"]:
+            if await the_one.coins < num["normal"]["c"]:
                 return point_not_enough()
             keyword = {"r18": r18}
             if uid := components.get("uid"):
