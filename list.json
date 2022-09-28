@@ -99,9 +99,9 @@
     "name": "新闻",
     "root_dir": "news",
     "author": "Colsrch",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "pypi": false,
-    "description": "每日 7:30 推送新闻"
+    "description": "每日 8:00 推送新闻"
   },
   {
     "name": "投票管理",

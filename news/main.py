@@ -24,42 +24,52 @@ manager: CommandDelegateManager = CommandDelegateManager()
 
 
 @manager.register(
-    entry='news',
-    brief_help='新闻',
+    entry="news",
+    brief_help="新闻",
     alc=Alconna(
         headers=manager.headers,
-        command='news',
-        options=[
-            Option('on', help_text='开启新闻推送'),
-            Option('off', help_text='关闭新闻推送')
-        ],
-        help_text='新闻'
-    )
+        command="news",
+        options=[Option("on", help_text="开启新闻推送"), Option("off", help_text="关闭新闻推送")],
+        help_text="新闻",
+    ),
 )
-async def process(target: Union[Friend, Member], sender: Union[Friend, Group], cmd: Arpamar, alc: Alconna):
+async def process(
+    target: Union[Friend, Member],
+    sender: Union[Friend, Group],
+    cmd: Arpamar,
+    alc: Alconna,
+):
     if not cmd.options:
         return await print_help(alc.get_help())
     try:
         if isinstance(sender, Friend):
-            model = 'friend'
+            model = "friend"
         elif Permission.manual(target, level=Permission.GROUP_ADMIN):
-            model = 'group'
+            model = "group"
         else:
             return await not_admin()
-        News.replace(uid=sender.id, model=model, status=cmd.find('on')).execute()
-        return MessageChain('设置成功！' + '将于每日 7:30 推送日报' if cmd.find('on') else '')
+        News.replace(uid=sender.id, model=model, status=cmd.find("on")).execute()
+        return MessageChain("设置成功！" + "将于每日 8:00 推送日报" if cmd.find("on") else "")
     except Exception as e:
         logger.error(e)
         return await unknown_error()
 
 
-@sche.schedule(timers.crontabify('30 7 * * * 0'))
+@sche.schedule(timers.crontabify("0 8 * * * 0"))
 async def send_60s_news():
-    logger.info('Sending 60s news...')
-    await app.send_friend_message(Config().MASTER_QQ, MessageChain('正在推送每日早报'))
-    msg = MessageChain([Image(data_bytes=await general_request('http://bjb.yunwj.top/php/tp/1.jpg', _type='byte'))])
+    logger.info("Sending 60s news...")
+    await app.send_friend_message(Config().MASTER_QQ, MessageChain("正在推送每日早报"))
+    msg = MessageChain(
+        [
+            Image(
+                data_bytes=await general_request(
+                    "http://bjb.yunwj.top/php/tp/1.jpg", _type="byte"
+                )
+            )
+        ]
+    )
     for news in News.select().where(News.status == True):
-        if news.model == 'friend':
+        if news.model == "friend":
             await app.send_friend_message(news.uid, msg)
         else:
             await app.send_group_message(news.uid, msg)
