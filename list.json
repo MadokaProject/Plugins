@@ -11,7 +11,7 @@
     "name": "词云",
     "root_dir": "word_cloud",
     "author": "MadokaProject",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "pypi": true,
     "description": "生成聊天词云"
   },
@@ -19,7 +19,7 @@
     "name": "机场签到",
     "root_dir": "sspanel",
     "author": "MadokaProject",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "pypi": true,
     "description": "签到获取流量"
   },
