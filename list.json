@@ -3,7 +3,7 @@
     "name": "背单词",
     "root_dir": "english_test",
     "author": "MadokaProject",
-    "version": "0.0.12",
+    "version": "4.0.1",
     "pypi": false,
     "description": "和群友一起背单词并赚取金币吧！"
   },
@@ -11,7 +11,7 @@
     "name": "词云",
     "root_dir": "word_cloud",
     "author": "MadokaProject",
-    "version": "0.0.10",
+    "version": "4.0.1",
     "pypi": true,
     "description": "生成聊天词云"
   },
@@ -35,7 +35,7 @@
     "name": "你画我猜",
     "root_dir": "draw_something",
     "author": "MadokaProject",
-    "version": "0.0.6",
+    "version": "4.0.1",
     "pypi": false,
     "description": "你画我猜小游戏"
   },
@@ -67,7 +67,7 @@
     "name": "学习通",
     "root_dir": "chaoxing",
     "author": "Colsrch",
-    "version": "0.0.8",
+    "version": "4.0.1",
     "pypi": true,
     "description": ""
   },
