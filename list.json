@@ -43,7 +43,7 @@
     "name": "赛马",
     "root_dir": "horse_racing",
     "author": "MadokaProject",
-    "version": "0.0.7",
+    "version": "4.0.1",
     "pypi": false,
     "description": "赛马小游戏"
   },
