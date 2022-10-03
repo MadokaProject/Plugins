@@ -1,35 +1,21 @@
 from io import BytesIO
 from pathlib import Path
 
-import httpx
 from PIL import Image as IMG, ImageOps
-from arclet.alconna import Alconna, Args, Arpamar
-from graia.ariadne.message.element import At
-from loguru import logger
 
-from app.core.commander import CommandDelegateManager
+from app.util.alconna import Args, Arpamar, Commander
+from app.util.graia import At, Group, GroupMessage, message
+from app.util.network import general_request
 from app.util.phrases import *
 
 FRAMES_PATH = Path(__file__).parent.joinpath("PetPetFrames")
 
-manager: CommandDelegateManager = CommandDelegateManager()
+command = Commander("pet", "摸摸", Args["qq", At])
 
 
-@manager.register(
-    entry='pet',
-    brief_help='摸摸',
-    alc=Alconna(
-        headers=manager.headers,
-        command='pet',
-        main_args=Args['qq', At],
-        help_text='摸摸'
-    ))
-async def process(command: Arpamar):
-    try:
-        return MessageChain([Image(data_bytes=await pet(command.query('qq').target))])
-    except Exception as e:
-        logger.exception(e)
-        return unknown_error()
+@command.no_match(evnets=[GroupMessage])
+async def petpet(sender: Group, cmd: Arpamar):
+    message(Image(data_bytes=await pet(cmd.query("qq").target))).target(sender).send()
 
 
 frame_spec = [
@@ -50,7 +36,7 @@ squish_factor = [
 
 squish_translation_factor = [0, 20, 34, 21, 0]
 
-frames = tuple([FRAMES_PATH.joinpath(f"frame{i}.png") for i in range(5)])
+frames = tuple(FRAMES_PATH.joinpath(f"frame{i}.png") for i in range(5))
 
 
 # 生成函数（非数学意味）
@@ -81,10 +67,8 @@ async def make_frame(avatar, i, squish=0, flip=False):
 async def pet(member_id, flip=False, squish=0) -> bytes:
     url = f"http://q1.qlogo.cn/g?b=qq&nk={str(member_id)}&s=640"
     gif_frames = []
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url=url)
-
-    avatar = IMG.open(BytesIO(resp.content))
+    resp = await general_request(url, _type="byte")
+    avatar = IMG.open(BytesIO(resp))
 
     # 生成每一帧
     for i in range(5):

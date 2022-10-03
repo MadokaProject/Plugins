@@ -2,56 +2,33 @@ import asyncio
 import re
 from typing import Union
 
-from arclet.alconna import Alconna, Args, Arpamar
-from graia.ariadne.message.chain import MessageChain
-from graia.ariadne.message.element import Source
-from graia.ariadne.model import Group, Friend
 from loguru import logger
 
-from app.core.commander import CommandDelegateManager
-from app.util.send_message import safeSendMessage
+from app.util.alconna import Args, Arpamar, Commander
+from app.util.graia import Source, Group, Friend, message
 from app.util.tools import to_thread
 
-manager: CommandDelegateManager = CommandDelegateManager()
+command = Commander("calc", "计算器", Args["formula;S", str], help_text="四则计算器")
 
 
-@manager.register(
-    entry='calc',
-    brief_help='计算器',
-    alc=Alconna(
-        headers=manager.headers,
-        command='calc',
-        main_args=Args['formula;S', str],
-        help_text='四则计算器'
-    )
-)
+@command.no_match()
 async def calculator_main(sender: Union[Friend, Group], source: Source, cmd: Arpamar):
-    if formula := cmd.query('formula'):
-        expression = rep_str(''.join(i for i in formula))
-        print(expression)
-        if len(expression) > 800:
-            return await safeSendMessage(
-                sender, MessageChain.create("字符数过多"), quote=source
-            )
-        try:
-            answer = await asyncio.wait_for(
-                to_thread(arithmetic, expression), timeout=15
-            )
-        except ZeroDivisionError:
-            return await safeSendMessage(
-                sender, MessageChain.create("0 不可作为除数"), quote=source
-            )
-        except asyncio.TimeoutError:
-            return await safeSendMessage(
-                sender, MessageChain.create("计算超时"), quote=source
-            )
-        except Exception as e:
-            logger.error(e)
-            return await safeSendMessage(
-                sender, MessageChain.create("出现未知错误，终止计算"), quote=source
-            )
+    if not (formula := cmd.query("formula")):
+        return
+    expression = rep_str("".join(formula))
+    if len(expression) > 800:
+        return message("字符数过多").quote(source).target(sender).send()
+    try:
+        answer = await asyncio.wait_for(to_thread(arithmetic, expression), timeout=15)
+    except ZeroDivisionError:
+        return message("0 不可作为除数").quote(source).target(sender).send()
+    except asyncio.TimeoutError:
+        return message("计算超时").quote(source).target(sender).send()
+    except Exception as e:
+        logger.error(e)
+        return message("出现未知错误，终止计算").quote(source).target(sender).send()
 
-        return await safeSendMessage(sender, MessageChain.create(answer), quote=source)
+    return message(answer).quote(source).target(sender).send()
 
 
 def rep_str(say: str):
@@ -98,7 +75,9 @@ def next_arithmetic(content):
         next_content_add_sub = next_content_add_sub.group()
         add_sub_content = add_sub(next_content_add_sub)
         add_sub_content = str(add_sub_content)
-        content = re.sub(r"-?\d+\.?\d*[-+]-?\d+\.?\d*", add_sub_content, content, count=1)
+        content = re.sub(
+            r"-?\d+\.?\d*[-+]-?\d+\.?\d*", add_sub_content, content, count=1
+        )
 
     return content
 
@@ -129,7 +108,11 @@ def _reduce(content):
     if content[0] == "" and content[2] != "":
         content = -float(content[1]) - float(content[2])
         return content
-    content = -float(content[1]) + float(content[3]) if content[0] == "" else float(content[0]) - float(content[1])
+    content = (
+        -float(content[1]) + float(content[3])
+        if content[0] == ""
+        else float(content[0]) - float(content[1])
+    )
 
     return content
 
