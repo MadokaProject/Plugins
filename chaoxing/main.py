@@ -61,10 +61,10 @@ async def signin_chaoxing(sender: Friend):
 async def auto_chaoxing(sender: Friend, cmd: Arpamar):
     if not await get_config(sender.id):
         return message("你还未配置账号信息，请私聊我进行配置").target(sender).send()
-    DBChaoxingSign.update(auto_sign=command.query("status")).where(
+    DBChaoxingSign.update(auto_sign=cmd.query("status")).where(
         DBChaoxingSign.qid == sender.id
     )
-    message("开启成功" if command.query("status") else "关闭成功").target(sender).send()
+    message("开启成功" if cmd.query("status") else "关闭成功").target(sender).send()
 
 
 @command.parse("配置", events=[FriendMessage])

@@ -39,12 +39,10 @@ command = Commander(
 
 @command.parse("user", events=[GroupMessage], permission=Permission.GROUP_ADMIN)
 async def user_vote(sender: Group, cmd: Arpamar):
-    vote_admin_users = (await get_config("myyueyue_vote", sender)).get(
-        "vote_admin_users", []
-    )
+    vote_admin_users = (await get_config("myyueyue_vote", sender)).get("user", [])
     if cmd.find("list"):
         return (
-            message([Plain("可投票成员: \n"), Plain("\n".join(vote_admin_users))])
+            message([Plain("可投票成员: \n"), Plain("\n".join(f"{i}" for i in vote_admin_users))])
             .target(sender)
             .send()
         )
@@ -110,7 +108,7 @@ async def config_vote(sender: Group, cmd: Arpamar):
 @command.no_match(events=[GroupMessage])
 async def start_vote(app: Ariadne, target: Member, sender: Group, cmd: Arpamar):
     vote_config = await get_config("myyueyue_vote", sender)
-    vote_admin_users = vote_config.get("vote_admin_users", [])
+    vote_admin_users = vote_config.get("user", [])
     vote_mark = random.randint(1, 99999999)
     vote_result: Dict[int, bool] = {}
 
