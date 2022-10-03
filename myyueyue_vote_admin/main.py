@@ -20,7 +20,7 @@ from app.util.graia import (
 )
 from app.util.control import Permission
 from app.util.online_config import save_config, get_config
-from app.util.phrases import not_admin,args_error, exec_permission_error
+from app.util.phrases import not_admin, args_error, exec_permission_error
 
 
 command = Commander(
@@ -43,7 +43,11 @@ async def user_vote(sender: Group, cmd: Arpamar):
         "vote_admin_users", []
     )
     if cmd.find("list"):
-        return message(f"可投票成员: {'\n'.join(vote_admin_users)}").target(sender).send()
+        return (
+            message([Plain("可投票成员: \n"), Plain("\n".join(vote_admin_users))])
+            .target(sender)
+            .send()
+        )
     if not (member := cmd.query("member")):
         return message("缺少 member 参数").target(sender).send()
     if isinstance(member, At):
@@ -71,18 +75,24 @@ async def user_vote(sender: Group, cmd: Arpamar):
 @command.parse("config", events=[GroupMessage], permission=Permission.GROUP_ADMIN)
 async def config_vote(sender: Group, cmd: Arpamar):
     if cmd.find("list"):
-        return message(
-            [
-                Plain("配置信息:\n"),
-                Plain(
-                    "\n".join(
-                        f"{k}: {v}"
-                        for k, v in (await get_config("myyueyue_vote", sender)).items()
-                        if k != "user"
-                    )
-                ),
-            ]
-        ).target(sender).send()
+        return (
+            message(
+                [
+                    Plain("配置信息:\n"),
+                    Plain(
+                        "\n".join(
+                            f"{k}: {v}"
+                            for k, v in (
+                                await get_config("myyueyue_vote", sender)
+                            ).items()
+                            if k != "user"
+                        )
+                    ),
+                ]
+            )
+            .target(sender)
+            .send()
+        )
     if cmd.find("mute"):
         _type = "mute"
     elif cmd.find("kick"):
@@ -91,9 +101,7 @@ async def config_vote(sender: Group, cmd: Arpamar):
         return message("缺少 mute 或 kick 参数").target(sender).send()
     proportion = cmd.query("proportion")
     if 0 < proportion <= 1:
-        await save_config(
-            "myyueyue_vote", sender, {_type: proportion}, model="add"
-        )
+        await save_config("myyueyue_vote", sender, {_type: proportion}, model="add")
         return message("设置成功！").target(sender).send()
     else:
         return message("比例应在 0-1 之间").target(sender).send()
@@ -110,7 +118,7 @@ async def start_vote(app: Ariadne, target: Member, sender: Group, cmd: Arpamar):
         vote_member: Member,
         vote_group: Group,
         vote_message: MessageChain,
-        vote_source: Source
+        vote_source: Source,
     ):
         """投票器"""
         vote_message = vote_message.display.replace("：", ":").replace(" ", "")
@@ -132,14 +140,14 @@ async def start_vote(app: Ariadne, target: Member, sender: Group, cmd: Arpamar):
         """
         with contextlib.suppress(asyncio.TimeoutError):
             message(
-                    [
-                        Plain("投票发起成功，请拥有投票权限者在90秒内投票！（重复投票可覆盖）\n"),
-                        Plain("投票目标: "),
-                        At(vote_user),
-                        Plain(f"\n标识号: {vote_mark}\n"),
-                        Plain(f"请输入: 同意:{vote_mark} | 反对:{vote_mark}"),
-                    ]
-                ).target(sender).send()
+                [
+                    Plain("投票发起成功，请拥有投票权限者在90秒内投票！（重复投票可覆盖）\n"),
+                    Plain("投票目标: "),
+                    At(vote_user),
+                    Plain(f"\n标识号: {vote_mark}\n"),
+                    Plain(f"请输入: 同意:{vote_mark} | 反对:{vote_mark}"),
+                ]
+            ).target(sender).send()
             await FunctionWaiter(voter, [GroupMessage]).wait(90)
         _proportion = len([i for i in vote_result.values() if i]) / len(vote_result)
         if _type not in vote_config:
@@ -149,8 +157,8 @@ async def start_vote(app: Ariadne, target: Member, sender: Group, cmd: Arpamar):
         else:
             vote_ret = _proportion, False
         message(
-                [Plain(f"投票结果: {vote_ret[1]}\n"), Plain(f"同意比例: {vote_ret[0]:.2%}")]
-            ).target(sender).send()
+            [Plain(f"投票结果: {vote_ret[1]}\n"), Plain(f"同意比例: {vote_ret[0]:.2%}")]
+        ).target(sender).send()
         return vote_ret
 
     if target.id not in vote_admin_users:

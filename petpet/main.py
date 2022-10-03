@@ -13,7 +13,7 @@ FRAMES_PATH = Path(__file__).parent.joinpath("PetPetFrames")
 command = Commander("pet", "摸摸", Args["qq", At])
 
 
-@command.no_match(evnets=[GroupMessage])
+@command.no_match(events=[GroupMessage])
 async def petpet(sender: Group, cmd: Arpamar):
     message(Image(data_bytes=await pet(cmd.query("qq").target))).target(sender).send()
 
