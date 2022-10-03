@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import random
 from pathlib import Path
@@ -78,12 +79,11 @@ async def start(target: Member, sender: Group):
             waiter_saying = waiter_message.display
             if waiter_saying == "取消":
                 return False
-            try:
+            with contextlib.suppress(ValueError):
                 confirm_book_id = int(waiter_saying)
                 if 1 <= confirm_book_id <= 15:
                     return confirm_book_id
-            finally:
-                message("请输入1-15以内的数字").target(sender).send()
+            message("请输入1-15以内的数字").target(sender).send()
 
     async def waiter(
         waiter_group: Group, waiter_member: Member, waiter_message: MessageChain
