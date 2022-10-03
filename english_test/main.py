@@ -11,7 +11,7 @@ from prettytable import PrettyTable
 from app.core.config import Config
 from app.entities.game import BotGame
 from app.plugin.basic.__11_game.database.database import Game as DBGame
-from app.util.alconna import Subcommand, Arpamar, Commander
+from app.util.alconna import Subcommand, Commander
 from app.util.control import Permission
 from app.util.graia import (
     Ariadne,
@@ -113,7 +113,7 @@ async def start(target: Member, sender: Group):
             if answer_record[waiter_user][1] == 1:
                 _msg = "你答错了哦，"
             else:
-                _msg = f"你连续答错了{answer_record[waiter_user][1]}题了哦，"
+                _msg = f"你连续答错了{answer_record[waiter_user][1]}次了哦，"
             _msg += f"惩罚你{punishment.get(answer_record[waiter_user][1], -15)}金币"
             message(_msg).target(waiter_group).at(waiter_member).send()
 
@@ -176,7 +176,7 @@ async def start(target: Member, sender: Group):
                         [
                             Plain("恭喜 "),
                             At(answer_qq),
-                            Plain(f" 回答正确 {word_data[0]}，\n"),
+                            Plain(f" 回答正确 {word_data.word}，\n"),
                             Plain(__msg),
                         ]
                     ).target(sender).send()
@@ -190,15 +190,17 @@ async def start(target: Member, sender: Group):
                 if __process == 1:
                     message(f"提示1\n这个单词由 {word_len} 个字母构成").target(sender).send()
                 elif __process == 2:
-                    message(f"提示2\n这个单词的首字母是 {word_data[0][0]}").target(sender).send()
+                    message(f"提示2\n这个单词的首字母是 {word_data.word[0]}").target(sender).send()
                 elif __process == 3:
                     half = int(word_len / 2)
-                    message(f"提示3\n这个单词的前半部分为\n{word_data[0][:half]}").target(
+                    message(f"提示3\n这个单词的前半部分为\n{word_data.word[:half]}").target(
                         sender
                     ).send()
                 elif __process == 4:
                     del RUNNING[sender.id]
-                    message(f"本次答案为：{word_data[0]}\n答题已结束，请重新开启").target(sender).send()
+                    message(f"本次答案为：{word_data.word}\n答题已结束，请重新开启").target(
+                        sender
+                    ).send()
                     return
 
 
