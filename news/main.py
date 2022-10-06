@@ -52,12 +52,10 @@ async def process(
 async def send_60s_news():
     logger.info("Sending 60s news...")
     message("正在推送每日早报").target(Config().MASTER_QQ).send()
-    msg = message(
-        Image(
-            data_bytes=await general_request(
-                "http://bjb.yunwj.top/php/tp/1.jpg", _type="byte"
-            )
+    msg = Image(
+        data_bytes=await general_request(
+            "http://bjb.yunwj.top/php/tp/1.jpg", _type="byte"
         )
     )
     for news in News.select().where(News.status == True):
-        msg.target(news.uid).send()
+        message(msg).target(news.uid).send()
