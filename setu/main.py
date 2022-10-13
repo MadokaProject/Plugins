@@ -40,24 +40,22 @@ manager: CommandDelegateManager = CommandDelegateManager()
 async def process(
     target: Union[Friend, Member], sender: Union[Friend, Group], command: Arpamar
 ):
+    sender_id = str(sender.id)
     r18 = (
-        CONFIG[str(sender.id)]["setu_R18"]
-        if CONFIG.__contains__(str(sender.id))
-        and CONFIG[str(sender.id)].__contains__("setu_R18")
+        CONFIG[str(sender_id)]["setu_R18"]
+        if sender_id in CONFIG and "setu_R18" in CONFIG[sender_id]
         else 0
     )
-    components = command.options.copy()
-    components.update(command.subcommands)
     try:
-        if _r18 := components.get("r18", False):
+        if _r18 := command.query("r18"):
             if not isinstance(sender, Group):
                 return
             if not Permission.manual(target, Permission.MASTER):
                 return not_admin()
-            await save_config("setu_R18", sender.id, _r18["r18"])
-            if not CONFIG.__contains__(str(sender.id)):
-                CONFIG.update({str(sender.id): {}})
-            CONFIG[str(sender.id)].update({"setu_R18": _r18["r18"]})
+            await save_config("setu_R18", sender.id, _r18)
+            if sender_id not in CONFIG:
+                CONFIG[sender_id] = {}
+            CONFIG[str(sender.id)].update({"setu_R18": _r18})
             return MessageChain([Plain("设置成功！")])
         else:
             # 判断积分是否足够，如果无，要求报错并返回
@@ -65,10 +63,10 @@ async def process(
             if await the_one.coins < num["normal"]["c"]:
                 return point_not_enough()
             keyword = {"r18": r18}
-            if uid := components.get("uid"):
-                keyword["uid"] = uid["uid"]
-            if tag := components.get("tag"):
-                keyword["tag"] = tag["tag"]
+            if uid := command.query("uid"):
+                keyword["uid"] = uid
+            if tag := command.query("tag"):
+                keyword["tag"] = tag
             response = await general_request(
                 url="https://api.lolicon.app/setu/v2",
                 method="GET",
