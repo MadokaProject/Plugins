@@ -4,6 +4,7 @@ from io import BytesIO
 
 from PIL import Image as IMG, ImageDraw, ImageFont
 
+from app.core.config import Config
 from app.core.settings import *
 from app.entities.game import BotGame
 from app.util.alconna import Subcommand, Commander
@@ -23,7 +24,6 @@ from app.util.tools import to_thread, app_path
 FONT_PATH = app_path().joinpath("resource/font")
 font24 = ImageFont.truetype(str(FONT_PATH.joinpath("sarasa-mono-sc-semibold.ttf")), 24)
 
-config: Config = Config()
 command = Commander("hr", "赛马小游戏", Subcommand("start", help_text="开始一局赛马小游戏"))
 
 
@@ -58,7 +58,7 @@ async def start_hr(app: Ariadne, target: Member, sender: Group):
                         GROUP_GAME_PROCESS[sender.id]["status"] = "running"
                         return True
                 else:
-                    message(f"你的{config.COIN_NAME}不足，无法参加游戏").target(sender).send()
+                    message(f"你的{Config.coin_settings.name}不足，无法参加游戏").target(sender).send()
         elif waiter_message.display == "退出赛马":
             if waiter_member.id == target.id:
                 for waiter_player in GROUP_GAME_PROCESS[sender.id]["members"]:
@@ -127,7 +127,7 @@ async def start_hr(app: Ariadne, target: Member, sender: Group):
         message(" 赛马小游戏开启成功，正在等待其他群成员加入，发送“加入赛马”参与游戏").at(target).target(sender).send()
     else:
         return (
-            message(f" 你的{config.COIN_NAME}不足，无法开始游戏").at(target).target(sender).send()
+            message(f" 你的{Config.coin_settings.name}不足，无法开始游戏").at(target).target(sender).send()
         )
 
     try:
@@ -206,7 +206,7 @@ async def start_hr(app: Ariadne, target: Member, sender: Group):
         [
             Plain("游戏结束，获胜者是："),
             At(game_data["winer"]),
-            Plain(f"已获得 {gold_count} {config.COIN_NAME}"),
+            Plain(f"已获得 {gold_count} {Config.coin_settings.name}"),
         ]
     ).target(sender).send()
     await BotGame(game_data["winer"]).update_coin(gold_count)

@@ -3,6 +3,7 @@ import secrets
 import time
 from typing import Union
 
+from app.core.config import Config
 from app.core.settings import *
 from app.entities.game import BotGame
 from app.util.alconna import Subcommand, Commander
@@ -750,7 +751,6 @@ WORD = {
     ]
 }
 
-config: Config = Config()
 command = Commander(
     "ds",
     "你画我猜",
@@ -770,7 +770,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
     if not await safeSendFriendMessage(
         target.id, MessageChain(f"本消息仅用于测试私信是否可用，无需回复\n{time.time()}")
     ):
-        message(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {config.BOT_NAME} 好友，用于发送题目").at(
+        message(f"由于你未添加好友，暂时无法发起你画我猜，请自行添加 {Config.name} 好友，用于发送题目").at(
             target
         ).target(sender).send()
         MEMBER_RUNING_LIST.remove(target.id)
@@ -847,7 +847,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
         GROUP_RUNING_LIST.append(sender.id)
         await safeSendGroupMessage(
             sender,
-            MessageChain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{config.COIN_NAME}"),
+            MessageChain(f"是否确认在本群开启一场你画我猜？这将消耗你 4 点{Config.coin_settings.name}"),
             quote=source,
         )
         try:
@@ -862,7 +862,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
                 if await BotGame(str(target.id)).get_coins() < 4:
                     GROUP_RUNING_LIST.remove(sender.id)
                     del GROUP_GAME_PROCESS[sender.id]
-                    message((f"你的{config.COIN_NAME}不足，无法开始游戏")).target(sender).at(
+                    message((f"你的{Config.coin_settings.name}不足，无法开始游戏")).target(sender).at(
                         target
                     ).send()
                     return
@@ -896,7 +896,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
                                 Plain("恭喜 "),
                                 At(result[0].id),
                                 Plain(
-                                    f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{config.COIN_NAME}，本次游戏结束"
+                                    f" 成功猜出本次答案，你和创建者分别获得 1 点和 2 点{Config.coin_settings.name}，本次游戏结束"
                                 ),
                             ]
                         ).target(sender).quote(result[1]).send()
@@ -905,7 +905,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
                         await BotGame(owner).update_coin(1)
                         GROUP_RUNING_LIST.remove(sender.id)
                         del GROUP_GAME_PROCESS[sender.id]
-                        message(f"本次你画我猜已终止，将返还创建者 1 点{config.COIN_NAME}").target(
+                        message(f"本次你画我猜已终止，将返还创建者 1 点{Config.coin_settings.name}").target(
                             sender
                         ).send()
                 except asyncio.TimeoutError:
@@ -917,7 +917,7 @@ async def start_ds(app: Ariadne, target: Member, sender: Group, source: Source):
                     message(
                         [
                             Plain(
-                                f"由于长时间没有人回答出正确答案，将返还创建者 1 点{config.COIN_NAME}，本次你画我猜已结束"
+                                f"由于长时间没有人回答出正确答案，将返还创建者 1 点{Config.coin_settings.name}，本次你画我猜已结束"
                             ),
                             Plain(f"\n本次的答案为：{question}"),
                         ]

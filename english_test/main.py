@@ -8,7 +8,6 @@ from typing import Union
 from loguru import logger
 from prettytable import PrettyTable
 
-from app.core.config import Config
 from app.entities.game import BotGame
 from app.plugin.basic.__11_game.database.database import Game as DBGame
 from app.util.alconna import Subcommand, Commander
@@ -60,7 +59,6 @@ reward = {1: 2, 2: 3, 3: 5, 4: 8, 5: 12, 6: 17, 7: 23, 8: 30, 9: 39}
 # 答错惩罚（包含连续答错）
 punishment = {1: -1, 2: -2, 3: -4, 4: -7, 5: -11}
 
-config: Config = Config()
 command = Commander(
     "背单词",
     "背单词",

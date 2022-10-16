@@ -51,7 +51,7 @@ async def process(
 @sche.schedule(timers.crontabify("0 8 * * * 0"))
 async def send_60s_news():
     logger.info("Sending 60s news...")
-    message("正在推送每日早报").target(Config().MASTER_QQ).send()
+    message("正在推送每日早报").target(Config.master_qq).send()
     msg = Image(
         data_bytes=await general_request(
             "http://bjb.yunwj.top/php/tp/1.jpg", _type="byte"

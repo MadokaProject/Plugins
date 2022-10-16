@@ -172,7 +172,7 @@ async def start_vote(app: Ariadne, target: Member, sender: Group, cmd: Arpamar):
         return exec_permission_error(sender)
     if user == app.account:
         return message("怎么会有笨蛋想要对我投票").target(sender).send()
-    if user == Config().MASTER_QQ:
+    if user == Config.master_qq:
         await app.mute_member(sender, target, 30)
         return message("你又在调皮了").target(sender).send()
     if (
