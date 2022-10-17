@@ -110,5 +110,13 @@
     "version": "0.0.3",
     "pypi": false,
     "description": "民意投票工具"
+  },
+  {
+    "name": "背成语",
+    "root_dir": "bifapang_idiom_test",
+    "author": "bifapang",
+    "version": "0.0.1",
+    "pypi": false,
+    "description": "快和小伙伴一起来背成语吧！"
   }
 ]
