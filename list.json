@@ -118,5 +118,13 @@
     "version": "0.0.1",
     "pypi": false,
     "description": "快和小伙伴一起来背成语吧！"
+  },
+  {
+    "name": "漂流瓶",
+    "root_dir": "drifting_bottle",
+    "author": "Colsrch",
+    "version": "0.0.1",
+    "pypi": true,
+    "description": "漂流瓶"
   }
 ]
