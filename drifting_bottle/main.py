@@ -61,13 +61,13 @@ async def throw_bottle_handler(group: Group, member: Member, source: Source, cmd
     async def image_waiter(waiter1_group: Group, waiter1_member: Member, waiter1_message: MessageChain):
         if waiter1_group.id == group.id and waiter1_member.id == member.id:
             if waiter1_message.has(Image):
-                return waiter1_message.get_first(Image).url
+                return await waiter1_message.get_first(Image).get_bytes()
             else:
                 return False
 
     text = None
     image_name = None
-    image_url = None
+    image = None
     if message_chain := cmd.query("content"):
         message_chain = MessageChain(message_chain)
         if message_chain.has(Plain):
@@ -99,31 +99,30 @@ async def throw_bottle_handler(group: Group, member: Member, source: Source, cmd
             elif len(message_chain.get(Image)) > 1:
                 return message("丢漂流瓶只能携带一张图片哦！").target(group).quote(source).send()
             else:
-                image_url = message_chain.get_first(Image).url
+                image = await message_chain.get_first(Image).get_bytes()
 
     if cmd.find("丢.pic"):
         message("请在 30 秒内发送你要附带的图片").target(group).quote(source).send()
         try:
-            image_url = await FunctionWaiter(image_waiter, events=[GroupMessage]).wait(30)
-            if image_url:
+            image = await FunctionWaiter(image_waiter, events=[GroupMessage]).wait(30)
+            if image:
                 message("图片已接收，请稍等").target(group).quote(source).send()
             else:
                 return message("你发送的不是“一张”图片，请重试").target(group).quote(source).send()
         except asyncio.TimeoutError:
             return message("图片等待超时").target(group).quote(source).send()
 
-    if image_url:
+    if image:
         if cmd.find("丢.skip-review") and Permission.manual(member, Permission.SUPER_ADMIN):
             logger.info("跳过审核")
         else:
             logger.info("开始审核")
-            moderation = await image_moderation_async(image_url)
+            moderation = await image_moderation_async(image)
             if not moderation["status"]:
                 return message(f"你的漂流瓶包含违规内容: {moderation['message']}，请检查后重新丢漂流瓶！").target(group).quote(source).send()
             elif moderation["status"] == "error":
                 return message("图片审核失败，请稍后重试！").target(group).quote(source).send()
 
-        image = await general_request(image_url, _type="bytes")
         image_name = f"{time.time()}.jfif"
         IMAGE_PATH.joinpath(image_name).write_bytes(image)
         if image:
