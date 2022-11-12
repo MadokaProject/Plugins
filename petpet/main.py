@@ -67,7 +67,7 @@ async def make_frame(avatar, i, squish=0, flip=False):
 async def pet(member_id, flip=False, squish=0) -> bytes:
     url = f"http://q1.qlogo.cn/g?b=qq&nk={str(member_id)}&s=640"
     gif_frames = []
-    resp = await general_request(url, _type="byte")
+    resp = await general_request(url, _type="bytes")
     avatar = IMG.open(BytesIO(resp))
 
     # 生成每一帧

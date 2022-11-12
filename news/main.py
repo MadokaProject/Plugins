@@ -54,7 +54,7 @@ async def send_60s_news():
     message("正在推送每日早报").target(Config.master_qq).send()
     msg = Image(
         data_bytes=await general_request(
-            "http://bjb.yunwj.top/php/tp/1.jpg", _type="byte"
+            "https://api.vvhan.com/api/60s", _type="bytes"
         )
     )
     for news in News.select().where(News.status == True):

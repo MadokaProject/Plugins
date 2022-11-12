@@ -27,7 +27,7 @@
     "name": "摸摸",
     "root_dir": "petpet",
     "author": "MadokaProject",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "pypi": false,
     "description": "生成摸摸动图"
   },
@@ -99,7 +99,7 @@
     "name": "新闻",
     "root_dir": "news",
     "author": "Colsrch",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "pypi": false,
     "description": "每日 8:00 推送新闻"
   },
