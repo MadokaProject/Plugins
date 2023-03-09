@@ -9,6 +9,7 @@ from app.util.graia import (
     DefaultFunctionWaiter,
     Friend,
     FriendMessage,
+    GroupMessage,
     Source,
     Group,
     Member,
@@ -66,7 +67,7 @@ async def connect_chat(target: Union[Friend, Member], sender: Union[Friend, Grou
             session_pools[target.id] = bot
         message("正在保持与你的对话，请以“#”开头与我聊天，需要结束对话请发送：#结束对话。\n重置对话请发送: #重置对话。").target(sender).quote(quote_source).send()
         while True:
-            msg: Union[MessageChain, tuple] = await DefaultFunctionWaiter(keep_chat, [FriendMessage]).wait(
+            msg: Union[MessageChain, tuple] = await DefaultFunctionWaiter(keep_chat, [FriendMessage, GroupMessage]).wait(
                 180, "TimeoutError"
             )
             if msg == "TimeoutError":
