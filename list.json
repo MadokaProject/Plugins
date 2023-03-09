@@ -126,5 +126,13 @@
     "version": "0.0.2",
     "pypi": true,
     "description": "漂流瓶"
+  },
+  {
+    "name": "Bing-AI",
+    "root_dir": "bing_gpt",
+    "author": "Colsrch",
+    "version": "0.0.1",
+    "pypi": true,
+    "description": "与 Bing AI 聊天"
   }
 ]
